@@ -1,0 +1,129 @@
+version: "3.8"
+
+x-airflow-common: &airflow-common
+  build: .
+  env_file:
+    - .env
+  environment:
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+    AIRFLOW__CORE__HOSTNAME_CALLABLE: airflow.utils.net.get_host_ip_address
+    AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: "False"
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: utc
+    AIRFLOW__LOGGING__BASE_LOG_FOLDER: /opt/airflow/logs
+    AIRFLOW__API__AUTH_BACKENDS: airflow.api_fastapi.auth.backend.basic_auth
+    AIRFLOW__SIMPLE_AUTH_MANAGER__USERS: ${AIRFLOW_ADMIN_USER:-admin}:${AIRFLOW_ADMIN_PASSWORD:-ADMIN}
+    AIRFLOW__API__BASE_URL: http://airflow-webserver:8080
+    AIRFLOW__API__SECRET_KEY: ${AIRFLOW_API_SECRET_KEY:-"PaPaRcWpIzafx3JeiZ+20A=="}
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-"dtc-airflow-jwt-secret"}
+    AIRFLOW__CORE__AIRFLOW_API_HOST: http://airflow-webserver:8080
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-airflow}:${POSTGRES_PASSWORD:-airflow}@airflow-db:5432/${POSTGRES_DB:-airflow}
+    CH_DB_Host: host.docker.internal
+    _PIP_ADDITIONAL_REQUIREMENTS: ""
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./src:/opt/airflow/src
+    - ./.env:/opt/airflow/.env
+    - airflow_logs:/opt/airflow/logs
+  depends_on:
+    airflow-db:
+      condition: service_healthy
+
+services:
+  airflow-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-airflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airflow}
+      POSTGRES_DB: ${POSTGRES_DB:-airflow}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command: -c "set -e && airflow db migrate"
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: api-server
+    ports:
+      - "8080:8080"
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    ports:
+      - "6006:6006"   # Phoenix UI
+      - "4317:4317"   # OTEL gRPC collector
+      - "4318:4318"   # OTEL HTTP collector
+    volumes:
+      - phoenix_data:/root/.phoenix
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.12.1
+    command: mlflow server --host 0.0.0.0 --port 5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    environment:
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /mlflow/artifacts
+    restart: unless-stopped
+
+  analytics-api:
+    build: .
+    env_file:
+      - .env
+    entrypoint: /bin/bash
+    command: -lc "uvicorn src.api_server:app --host 0.0.0.0 --port 8001"
+    ports:
+      - "8001:8001"
+    environment:
+      PHOENIX_COLLECTOR_ENDPOINT: "http://phoenix:4318/v1/traces"
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"
+    volumes:
+      - ./src:/opt/airflow/src
+      - ./ui:/opt/airflow/ui
+      - ./.env:/opt/airflow/.env
+    depends_on:
+      - phoenix
+      - mlflow
+
+volumes:
+  airflow_logs:
+  pgdata:
+  phoenix_data:
+  mlflow_data:

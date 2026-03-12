@@ -1,0 +1,162 @@
+[
+  {
+    "id": "veh_01",
+    "question": "Which vehicles have the lowest health scores in the fleet?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_health"],
+    "expected_output_contains": ["vehicle", "health", "score"]
+  },
+  {
+    "id": "veh_02",
+    "question": "Show me vehicles that have had more than 5 faults this month.",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults"],
+    "expected_output_contains": ["vehicle", "fault", "month"]
+  },
+  {
+    "id": "veh_03",
+    "question": "Which vehicles have unresolved critical faults?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults", "get_vehicle_health"],
+    "expected_output_contains": ["critical", "fault", "unresolved"]
+  },
+  {
+    "id": "veh_04",
+    "question": "What are the recurring faults for vehicles with poor health scores?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "fault_correlation",
+    "expected_tools": ["get_vehicle_faults", "get_vehicle_health"],
+    "expected_output_contains": ["recurring", "fault", "health"]
+  },
+  {
+    "id": "veh_05",
+    "question": "Which vehicles are most at risk of breakdown in the next 7 days?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_health", "get_maintenance_priority"],
+    "expected_output_contains": ["risk", "breakdown", "vehicle"]
+  },
+  {
+    "id": "veh_06",
+    "question": "Show me vehicles with engine fault history in the past 30 days.",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults"],
+    "expected_output_contains": ["engine", "fault", "vehicle"]
+  },
+  {
+    "id": "veh_07",
+    "question": "Which vehicles have the highest number of P-code (powertrain) faults?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults"],
+    "expected_output_contains": ["vehicle", "powertrain", "fault"]
+  },
+  {
+    "id": "veh_08",
+    "question": "Are there any vehicles showing braking system issues?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults", "get_fleet_system_health"],
+    "expected_output_contains": ["braking", "system", "vehicle"]
+  },
+  {
+    "id": "veh_09",
+    "question": "Which vehicles have been out of service the longest due to faults?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults", "get_vehicle_health"],
+    "expected_output_contains": ["vehicle", "service", "fault"]
+  },
+  {
+    "id": "veh_10",
+    "question": "Show me the fault history trend for the worst performing vehicles.",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "fault_correlation",
+    "expected_tools": ["get_vehicle_faults", "get_vehicle_health"],
+    "expected_output_contains": ["fault", "trend", "vehicle"]
+  },
+  {
+    "id": "veh_11",
+    "question": "Which vehicles need their battery or electrical system checked?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults", "get_fleet_system_health"],
+    "expected_output_contains": ["electrical", "battery", "vehicle"]
+  },
+  {
+    "id": "veh_12",
+    "question": "Identify vehicles with recurring transmission faults.",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "fault_correlation",
+    "expected_tools": ["get_vehicle_faults"],
+    "expected_output_contains": ["transmission", "recurring", "fault"]
+  },
+  {
+    "id": "veh_13",
+    "question": "Which vehicles had faults with slow resolution times (more than 3 days)?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults"],
+    "expected_output_contains": ["resolution", "fault", "vehicle"]
+  },
+  {
+    "id": "veh_14",
+    "question": "Show me vehicles with multiple co-occurring fault codes.",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "fault_correlation",
+    "expected_tools": ["get_vehicle_faults", "get_dtc_cooccurrence"],
+    "expected_output_contains": ["co-occurring", "fault", "vehicle"]
+  },
+  {
+    "id": "veh_15",
+    "question": "Which vehicles are due for preventive maintenance based on their fault patterns?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_maintenance_priority", "get_vehicle_health"],
+    "expected_output_contains": ["preventive", "maintenance", "vehicle"]
+  },
+  {
+    "id": "veh_16",
+    "question": "List vehicles with fault recurrence in the last 7 days.",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults"],
+    "expected_output_contains": ["recurrence", "fault", "vehicle"]
+  },
+  {
+    "id": "veh_17",
+    "question": "Which vehicles have emission system faults that could affect compliance?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults", "get_fleet_system_health"],
+    "expected_output_contains": ["emission", "compliance", "fault"]
+  },
+  {
+    "id": "veh_18",
+    "question": "Show me vehicles with both engine and fuel system faults.",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "fault_correlation",
+    "expected_tools": ["get_vehicle_faults", "get_dtc_cooccurrence"],
+    "expected_output_contains": ["engine", "fuel", "fault"]
+  },
+  {
+    "id": "veh_19",
+    "question": "Which vehicles had the most critical DTC codes this month?",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_faults", "get_fleet_dtc_distribution"],
+    "expected_output_contains": ["critical", "DTC", "vehicle"]
+  },
+  {
+    "id": "veh_20",
+    "question": "Identify the top 5 vehicles in need of immediate attention and explain why.",
+    "context": {"mode": "vehicle"},
+    "expected_intent": "vehicle_investigation",
+    "expected_tools": ["get_vehicle_health", "get_maintenance_priority"],
+    "expected_output_contains": ["vehicle", "immediate", "fault"]
+  }
+]
