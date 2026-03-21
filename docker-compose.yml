@@ -1,11 +1,4 @@
 services:
-  phoenix:
-    image: arizephoenix/phoenix:latest
-    container_name: phoenix
-    volumes:
-      - phoenix_data:/root/.phoenix
-    restart: unless-stopped
-
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.12.1
     container_name: mlflow
@@ -36,7 +29,6 @@ services:
       - /app/.venv
       - /app/.git
     depends_on:
-      - phoenix
       - mlflow
     restart: unless-stopped
 
@@ -59,6 +51,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  phoenix_data:
   mlflow_data:
   frontend_node_modules:

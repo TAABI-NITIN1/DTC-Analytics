@@ -105,28 +105,6 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-# ── Observability: Phoenix (LLM tracing) ────────────────────────
-# Gracefully skip if not installed or endpoint not configured.
-try:
-    import phoenix as px
-    from openinference.instrumentation.langchain import LangChainInstrumentor
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk import trace as trace_sdk
-    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-
-    _phoenix_endpoint = os.getenv('PHOENIX_COLLECTOR_ENDPOINT', '')
-    if _phoenix_endpoint:
-        _tracer_provider = trace_sdk.TracerProvider()
-        _tracer_provider.add_span_processor(
-            SimpleSpanProcessor(OTLPSpanExporter(endpoint=_phoenix_endpoint))
-        )
-        LangChainInstrumentor().instrument(tracer_provider=_tracer_provider)
-        log.info('Phoenix tracing enabled → %s', _phoenix_endpoint)
-    else:
-        log.info('PHOENIX_COLLECTOR_ENDPOINT not set — tracing disabled')
-except ImportError:
-    log.info('arize-phoenix not installed — tracing disabled')
-
 # ── Observability: MLflow (experiment metrics) ──────────────────
 try:
     import mlflow
@@ -2158,28 +2136,6 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
 # from pathlib import Path
 
 # log = logging.getLogger(__name__)
-
-# # ── Observability: Phoenix (LLM tracing) ────────────────────────
-# # Gracefully skip if not installed or endpoint not configured.
-# try:
-#     import phoenix as px
-#     from openinference.instrumentation.langchain import LangChainInstrumentor
-#     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-#     from opentelemetry.sdk import trace as trace_sdk
-#     from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-
-#     _phoenix_endpoint = os.getenv('PHOENIX_COLLECTOR_ENDPOINT', '')
-#     if _phoenix_endpoint:
-#         _tracer_provider = trace_sdk.TracerProvider()
-#         _tracer_provider.add_span_processor(
-#             SimpleSpanProcessor(OTLPSpanExporter(endpoint=_phoenix_endpoint))
-#         )
-#         LangChainInstrumentor().instrument(tracer_provider=_tracer_provider)
-#         log.info('Phoenix tracing enabled → %s', _phoenix_endpoint)
-#     else:
-#         log.info('PHOENIX_COLLECTOR_ENDPOINT not set — tracing disabled')
-# except ImportError:
-#     log.info('arize-phoenix not installed — tracing disabled')
 
 # # ── Observability: MLflow (experiment metrics) ──────────────────
 # try:
