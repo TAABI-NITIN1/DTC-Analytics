@@ -1,0 +1,14 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.log
+*.sqlite
+.venv
+venv
+.airflow
+.git
+.gitignore
+.env
+staging

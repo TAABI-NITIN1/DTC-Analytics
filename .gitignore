@@ -1,0 +1,18 @@
+# ignore the env credentials file
+.env
+# ignore the data folder
+data/
+# VPN config (contains private keys)
+*.ovpn
+# MLflow database file
+mlflow.db
+
+# Airflow and Python cache
+.airflow/
+__pycache__/
+
+# Node/React Dependencies
+node_modules/
+build/
+.env.local
+myvenv/

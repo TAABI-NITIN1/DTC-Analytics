@@ -1,0 +1,162 @@
+[
+  {
+    "id": "fleet_01",
+    "question": "What is the overall health status of the fleet?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_health"],
+    "expected_output_contains": ["fleet", "health", "vehicle"]
+  },
+  {
+    "id": "fleet_02",
+    "question": "How many vehicles are active in the fleet this month?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_health"],
+    "expected_output_contains": ["vehicle", "active", "fleet"]
+  },
+  {
+    "id": "fleet_03",
+    "question": "What are the top DTC codes affecting the fleet right now?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_dtc_distribution"],
+    "expected_output_contains": ["DTC", "fault", "code"]
+  },
+  {
+    "id": "fleet_04",
+    "question": "Show me the fleet health trend over the past 30 days.",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "trend_analysis",
+    "expected_tools": ["get_fleet_trends"],
+    "expected_output_contains": ["trend", "health", "30"]
+  },
+  {
+    "id": "fleet_05",
+    "question": "Which vehicles need immediate maintenance?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "maintenance_prioritization",
+    "expected_tools": ["get_maintenance_priority"],
+    "expected_output_contains": ["maintenance", "vehicle", "priority"]
+  },
+  {
+    "id": "fleet_06",
+    "question": "What is the average health score across all vehicles?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_health"],
+    "expected_output_contains": ["health", "score", "average"]
+  },
+  {
+    "id": "fleet_07",
+    "question": "How has the fleet fault rate changed over the last 3 months?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "trend_analysis",
+    "expected_tools": ["get_fleet_trends"],
+    "expected_output_contains": ["fault", "trend", "month"]
+  },
+  {
+    "id": "fleet_08",
+    "question": "Which vehicle systems are showing the most failures across the fleet?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_system_health"],
+    "expected_output_contains": ["system", "failure", "fleet"]
+  },
+  {
+    "id": "fleet_09",
+    "question": "What percentage of vehicles have open unresolved faults?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_health"],
+    "expected_output_contains": ["fault", "vehicle", "unresolved"]
+  },
+  {
+    "id": "fleet_10",
+    "question": "Which vehicles have been flagged as critical in the last week?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "maintenance_prioritization",
+    "expected_tools": ["get_maintenance_priority"],
+    "expected_output_contains": ["critical", "vehicle", "fault"]
+  },
+  {
+    "id": "fleet_11",
+    "question": "Show me the distribution of DTC severity levels across the fleet.",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_dtc_distribution"],
+    "expected_output_contains": ["severity", "DTC", "distribution"]
+  },
+  {
+    "id": "fleet_12",
+    "question": "Give me a weekly trend of vehicle health scores for the past month.",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "trend_analysis",
+    "expected_tools": ["get_fleet_trends"],
+    "expected_output_contains": ["weekly", "health", "trend"]
+  },
+  {
+    "id": "fleet_13",
+    "question": "Which engine-related faults are most common in the fleet?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_system_health", "get_fleet_dtc_distribution"],
+    "expected_output_contains": ["engine", "fault", "common"]
+  },
+  {
+    "id": "fleet_14",
+    "question": "What maintenance actions are most urgent for the fleet this week?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "maintenance_prioritization",
+    "expected_tools": ["get_maintenance_priority"],
+    "expected_output_contains": ["maintenance", "urgent", "vehicle"]
+  },
+  {
+    "id": "fleet_15",
+    "question": "How does the fleet health this month compare to last month?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "trend_analysis",
+    "expected_tools": ["get_fleet_trends"],
+    "expected_output_contains": ["health", "month", "compare"]
+  },
+  {
+    "id": "fleet_16",
+    "question": "What is the total number of active fault episodes in the fleet today?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_health"],
+    "expected_output_contains": ["fault", "active", "fleet"]
+  },
+  {
+    "id": "fleet_17",
+    "question": "Show me the top 10 vehicles with the most faults.",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "maintenance_prioritization",
+    "expected_tools": ["get_maintenance_priority"],
+    "expected_output_contains": ["vehicle", "fault", "top"]
+  },
+  {
+    "id": "fleet_18",
+    "question": "What are the emission-related issues in the fleet?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_system_health"],
+    "expected_output_contains": ["emission", "fault", "fleet"]
+  },
+  {
+    "id": "fleet_19",
+    "question": "Which vehicle systems have improved in health over the last 30 days?",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "trend_analysis",
+    "expected_tools": ["get_fleet_system_health", "get_fleet_trends"],
+    "expected_output_contains": ["system", "health", "improved"]
+  },
+  {
+    "id": "fleet_20",
+    "question": "Give me a full fleet diagnostic summary with key risk areas.",
+    "context": {"mode": "fleet", "customer_name": ""},
+    "expected_intent": "fleet_health",
+    "expected_tools": ["get_fleet_health", "get_fleet_dtc_distribution"],
+    "expected_output_contains": ["fleet", "health", "risk"]
+  }
+]

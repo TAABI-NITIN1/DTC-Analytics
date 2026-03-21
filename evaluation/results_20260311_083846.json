@@ -1,0 +1,1802 @@
+{
+  "timestamp": "2026-03-11T08:38:46.370278+00:00",
+  "summary": {
+    "questions_evaluated": 60,
+    "intent_accuracy": 0.6333,
+    "avg_tool_recall": 0.7167,
+    "avg_keyword_accuracy": 0.9945,
+    "avg_latency_sec": 58.32,
+    "total_tokens_prompt": 1996840,
+    "total_tokens_completion": 175912,
+    "failure_rate": 0.5
+  },
+  "per_question": [
+    {
+      "id": "fleet_01",
+      "question": "What is the overall health status of the fleet?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_health"
+      ],
+      "actual_tools": [
+        "get_fleet_dtc_distribution",
+        "get_fleet_health",
+        "get_fleet_system_health",
+        "get_fleet_trends",
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 25.57,
+      "tokens_prompt": 41246,
+      "tokens_completion": 864,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_02",
+      "question": "How many vehicles are active in the fleet this month?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_health"
+      ],
+      "actual_tools": [
+        "get_fleet_health"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 7.73,
+      "tokens_prompt": 3677,
+      "tokens_completion": 131,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_03",
+      "question": "What are the top DTC codes affecting the fleet right now?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_dtc_distribution"
+      ],
+      "actual_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 23.62,
+      "tokens_prompt": 5324,
+      "tokens_completion": 1337,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_04",
+      "question": "Show me the fleet health trend over the past 30 days.",
+      "expected_intent": "trend_analysis",
+      "actual_intent": "trend_analysis",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_trends"
+      ],
+      "actual_tools": [
+        "generate_chart",
+        "get_fleet_health",
+        "get_fleet_trends"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 15.8,
+      "tokens_prompt": 60520,
+      "tokens_completion": 445,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_05",
+      "question": "Which vehicles need immediate maintenance?",
+      "expected_intent": "maintenance_prioritization",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_maintenance_priority"
+      ],
+      "actual_tools": [
+        "get_fleet_health",
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 24.94,
+      "tokens_prompt": 5430,
+      "tokens_completion": 1442,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_06",
+      "question": "What is the average health score across all vehicles?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_health"
+      ],
+      "actual_tools": [
+        "get_fleet_health"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 7.86,
+      "tokens_prompt": 3674,
+      "tokens_completion": 178,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_07",
+      "question": "How has the fleet fault rate changed over the last 3 months?",
+      "expected_intent": "trend_analysis",
+      "actual_intent": "trend_analysis",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_trends"
+      ],
+      "actual_tools": [
+        "get_fleet_health",
+        "get_fleet_trends",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 20.25,
+      "tokens_prompt": 88522,
+      "tokens_completion": 603,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "fleet_08",
+      "question": "Which vehicle systems are showing the most failures across the fleet?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_system_health"
+      ],
+      "actual_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_health",
+        "get_fleet_system_health"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 19.39,
+      "tokens_prompt": 12379,
+      "tokens_completion": 775,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_09",
+      "question": "What percentage of vehicles have open unresolved faults?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_health"
+      ],
+      "actual_tools": [
+        "get_fleet_health"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 9.12,
+      "tokens_prompt": 3670,
+      "tokens_completion": 275,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_10",
+      "question": "Which vehicles have been flagged as critical in the last week?",
+      "expected_intent": "maintenance_prioritization",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_maintenance_priority"
+      ],
+      "actual_tools": [
+        "get_maintenance_priority",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 15.83,
+      "tokens_prompt": 25607,
+      "tokens_completion": 727,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "fleet_11",
+      "question": "Show me the distribution of DTC severity levels across the fleet.",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_dtc_distribution"
+      ],
+      "actual_tools": [
+        "generate_chart",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 38.97,
+      "tokens_prompt": 24716,
+      "tokens_completion": 2357,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "fleet_12",
+      "question": "Give me a weekly trend of vehicle health scores for the past month.",
+      "expected_intent": "trend_analysis",
+      "actual_intent": "trend_analysis",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_trends"
+      ],
+      "actual_tools": [
+        "generate_chart",
+        "get_fleet_trends",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 17.99,
+      "tokens_prompt": 88176,
+      "tokens_completion": 538,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "fleet_13",
+      "question": "Which engine-related faults are most common in the fleet?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_dtc_distribution",
+        "get_fleet_system_health"
+      ],
+      "actual_tools": [
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution",
+        "get_fleet_system_health"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 17.61,
+      "tokens_prompt": 27415,
+      "tokens_completion": 808,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_14",
+      "question": "What maintenance actions are most urgent for the fleet this week?",
+      "expected_intent": "maintenance_prioritization",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_maintenance_priority"
+      ],
+      "actual_tools": [
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution",
+        "get_fleet_health",
+        "get_fleet_system_health",
+        "get_fleet_trends",
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 30.21,
+      "tokens_prompt": 55155,
+      "tokens_completion": 1249,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_15",
+      "question": "How does the fleet health this month compare to last month?",
+      "expected_intent": "trend_analysis",
+      "actual_intent": "trend_analysis",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_trends"
+      ],
+      "actual_tools": [
+        "get_fleet_health",
+        "get_fleet_trends",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 19.8,
+      "tokens_prompt": 61787,
+      "tokens_completion": 610,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "fleet_16",
+      "question": "What is the total number of active fault episodes in the fleet today?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_health"
+      ],
+      "actual_tools": [
+        "get_fleet_health"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 8.38,
+      "tokens_prompt": 3689,
+      "tokens_completion": 157,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_17",
+      "question": "Show me the top 10 vehicles with the most faults.",
+      "expected_intent": "maintenance_prioritization",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_maintenance_priority"
+      ],
+      "actual_tools": [
+        "get_maintenance_priority",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 28.94,
+      "tokens_prompt": 10473,
+      "tokens_completion": 1416,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "fleet_18",
+      "question": "What are the emission-related issues in the fleet?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_system_health"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution",
+        "get_fleet_system_health"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 19.81,
+      "tokens_prompt": 24847,
+      "tokens_completion": 942,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "fleet_19",
+      "question": "Which vehicle systems have improved in health over the last 30 days?",
+      "expected_intent": "trend_analysis",
+      "actual_intent": "trend_analysis",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_system_health",
+        "get_fleet_trends"
+      ],
+      "actual_tools": [
+        "get_fleet_system_health",
+        "get_fleet_trends",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 0.667,
+      "latency_sec": 21.62,
+      "tokens_prompt": 75218,
+      "tokens_completion": 965,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "fleet_20",
+      "question": "Give me a full fleet diagnostic summary with key risk areas.",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_dtc_distribution",
+        "get_fleet_health"
+      ],
+      "actual_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution",
+        "get_fleet_health",
+        "get_fleet_system_health",
+        "get_fleet_trends",
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 64.43,
+      "tokens_prompt": 42234,
+      "tokens_completion": 3425,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "veh_01",
+      "question": "Which vehicles have the lowest health scores in the fleet?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 15.81,
+      "tokens_prompt": 4883,
+      "tokens_completion": 877,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "veh_02",
+      "question": "Show me vehicles that have had more than 5 faults this month.",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 13.88,
+      "tokens_prompt": 10169,
+      "tokens_completion": 482,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_03",
+      "question": "Which vehicles have unresolved critical faults?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_faults",
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "get_maintenance_priority",
+        "get_vehicle_faults"
+      ],
+      "tool_recall": 0.5,
+      "keyword_hits": 1.0,
+      "latency_sec": 19.47,
+      "tokens_prompt": 19682,
+      "tokens_completion": 717,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "veh_04",
+      "question": "What are the recurring faults for vehicles with poor health scores?",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "fault_correlation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_vehicle_faults",
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "generate_chart",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 136.61,
+      "tokens_prompt": 34508,
+      "tokens_completion": 8785,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "veh_05",
+      "question": "Which vehicles are most at risk of breakdown in the next 7 days?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_maintenance_priority",
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "get_fleet_health",
+        "get_maintenance_priority",
+        "get_vehicle_faults"
+      ],
+      "tool_recall": 0.5,
+      "keyword_hits": 1.0,
+      "latency_sec": 30.44,
+      "tokens_prompt": 17661,
+      "tokens_completion": 1894,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "veh_06",
+      "question": "Show me vehicles with engine fault history in the past 30 days.",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "vehicle_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 77.52,
+      "tokens_prompt": 30051,
+      "tokens_completion": 4238,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_07",
+      "question": "Which vehicles have the highest number of P-code (powertrain) faults?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 14.56,
+      "tokens_prompt": 9869,
+      "tokens_completion": 478,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_08",
+      "question": "Are there any vehicles showing braking system issues?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_fleet_system_health",
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_system_health",
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 0.5,
+      "keyword_hits": 1.0,
+      "latency_sec": 14.61,
+      "tokens_prompt": 16109,
+      "tokens_completion": 781,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "veh_09",
+      "question": "Which vehicles have been out of service the longest due to faults?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_faults",
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "get_maintenance_priority",
+        "get_vehicle_faults",
+        "run_sql"
+      ],
+      "tool_recall": 0.5,
+      "keyword_hits": 1.0,
+      "latency_sec": 23.81,
+      "tokens_prompt": 19685,
+      "tokens_completion": 1223,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_10",
+      "question": "Show me the fault history trend for the worst performing vehicles.",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "trend_analysis",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_faults",
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "generate_chart",
+        "get_fleet_trends",
+        "get_maintenance_priority",
+        "get_vehicle_faults"
+      ],
+      "tool_recall": 0.5,
+      "keyword_hits": 1.0,
+      "latency_sec": 30.44,
+      "tokens_prompt": 184977,
+      "tokens_completion": 1382,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "veh_11",
+      "question": "Which vehicles need their battery or electrical system checked?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_fleet_system_health",
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_system_health",
+        "get_maintenance_priority",
+        "get_vehicle_faults",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 20.94,
+      "tokens_prompt": 30682,
+      "tokens_completion": 911,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_12",
+      "question": "Identify vehicles with recurring transmission faults.",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_system_health",
+        "get_maintenance_priority",
+        "get_vehicle_faults",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 20.81,
+      "tokens_prompt": 74638,
+      "tokens_completion": 915,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_13",
+      "question": "Which vehicles had faults with slow resolution times (more than 3 days)?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 14.59,
+      "tokens_prompt": 16966,
+      "tokens_completion": 524,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_14",
+      "question": "Show me vehicles with multiple co-occurring fault codes.",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "fault_correlation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_cooccurrence",
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_fleet_impact",
+        "get_maintenance_priority",
+        "get_vehicle_faults",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 134.01,
+      "tokens_prompt": 45035,
+      "tokens_completion": 8007,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_15",
+      "question": "Which vehicles are due for preventive maintenance based on their fault patterns?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_maintenance_priority",
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_system_health",
+        "get_maintenance_priority",
+        "get_vehicle_faults"
+      ],
+      "tool_recall": 0.5,
+      "keyword_hits": 1.0,
+      "latency_sec": 25.77,
+      "tokens_prompt": 71105,
+      "tokens_completion": 1443,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "veh_16",
+      "question": "List vehicles with fault recurrence in the last 7 days.",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 17.95,
+      "tokens_prompt": 7042,
+      "tokens_completion": 586,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_17",
+      "question": "Which vehicles have emission system faults that could affect compliance?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_fleet_system_health",
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_system_health",
+        "get_maintenance_priority",
+        "run_sql"
+      ],
+      "tool_recall": 0.5,
+      "keyword_hits": 1.0,
+      "latency_sec": 16.64,
+      "tokens_prompt": 42130,
+      "tokens_completion": 724,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_18",
+      "question": "Show me vehicles with both engine and fuel system faults.",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "fault_correlation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_cooccurrence",
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 76.57,
+      "tokens_prompt": 21378,
+      "tokens_completion": 4131,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_19",
+      "question": "Which vehicles had the most critical DTC codes this month?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_fleet_dtc_distribution",
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "get_maintenance_priority",
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 18.1,
+      "tokens_prompt": 10118,
+      "tokens_completion": 637,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "veh_20",
+      "question": "Identify the top 5 vehicles in need of immediate attention and explain why.",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_maintenance_priority",
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "get_fleet_health",
+        "get_maintenance_priority",
+        "get_vehicle_faults",
+        "get_vehicle_health",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 44.84,
+      "tokens_prompt": 25306,
+      "tokens_completion": 2555,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_01",
+      "question": "What does fault code P0300 mean and how serious is it?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_details"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_system_health"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 122.71,
+      "tokens_prompt": 32606,
+      "tokens_completion": 7228,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "dtc_02",
+      "question": "How many vehicles in the fleet are affected by code P0420?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_fleet_impact"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 143.29,
+      "tokens_prompt": 44528,
+      "tokens_completion": 8477,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_03",
+      "question": "What other fault codes typically appear together with P0300?",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "fault_correlation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 128.22,
+      "tokens_prompt": 27743,
+      "tokens_completion": 7312,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_04",
+      "question": "What is the fleet-wide impact of DTC P0171?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_details",
+        "get_dtc_fleet_impact"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution",
+        "get_fleet_system_health",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 132.94,
+      "tokens_prompt": 77822,
+      "tokens_completion": 8327,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_05",
+      "question": "What are the most common powertrain fault codes in the fleet?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "fleet_health",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_dtc_details",
+        "get_fleet_dtc_distribution"
+      ],
+      "actual_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution",
+        "get_fleet_system_health"
+      ],
+      "tool_recall": 0.5,
+      "keyword_hits": 1.0,
+      "latency_sec": 14.31,
+      "tokens_prompt": 13062,
+      "tokens_completion": 688,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "dtc_06",
+      "question": "Which DTC codes are linked to emission failures?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_details",
+        "get_fleet_dtc_distribution"
+      ],
+      "actual_tools": [
+        "get_dtc_details"
+      ],
+      "tool_recall": 0.5,
+      "keyword_hits": 1.0,
+      "latency_sec": 125.86,
+      "tokens_prompt": 25191,
+      "tokens_completion": 7157,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "dtc_07",
+      "question": "What fault codes commonly occur at the same time as U0100?",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "fault_correlation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 84.88,
+      "tokens_prompt": 20137,
+      "tokens_completion": 4385,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_08",
+      "question": "How long does it typically take to resolve DTC P0420 in the fleet?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_details",
+        "get_dtc_fleet_impact"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 162.05,
+      "tokens_prompt": 45985,
+      "tokens_completion": 9117,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_09",
+      "question": "What are the most severe DTC codes currently active in the fleet?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_dtc_details",
+        "get_fleet_dtc_distribution"
+      ],
+      "actual_tools": [
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution",
+        "get_fleet_health"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 23.88,
+      "tokens_prompt": 12178,
+      "tokens_completion": 1308,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "dtc_10",
+      "question": "Is P0700 a transmission-related fault and what does it indicate?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_details"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 126.91,
+      "tokens_prompt": 26478,
+      "tokens_completion": 7583,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "dtc_11",
+      "question": "Which DTC codes have the highest fleet-wide recurrence rate?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_fleet_impact"
+      ],
+      "actual_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 129.72,
+      "tokens_prompt": 27549,
+      "tokens_completion": 7675,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "dtc_12",
+      "question": "What are the root causes of P0171 (fuel system running lean)?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_details"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 148.95,
+      "tokens_prompt": 30071,
+      "tokens_completion": 8039,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_13",
+      "question": "Are there any fault code combinations that could predict engine failure?",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "fault_correlation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_fleet_impact"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution",
+        "get_fleet_system_health",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 151.64,
+      "tokens_prompt": 67200,
+      "tokens_completion": 8890,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_14",
+      "question": "Compare the fleet impact of P0300 versus P0420.",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_details",
+        "get_dtc_fleet_impact"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "run_sql"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 172.89,
+      "tokens_prompt": 76700,
+      "tokens_completion": 9730,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_15",
+      "question": "What is the resolution rate for B-code body-system faults in the fleet?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "fleet_health",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution"
+      ],
+      "actual_tools": [
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 18.67,
+      "tokens_prompt": 7694,
+      "tokens_completion": 717,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_16",
+      "question": "Which DTC codes are most frequently causing vehicle downtime?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_dtc_fleet_impact"
+      ],
+      "actual_tools": [
+        "generate_chart",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 27.09,
+      "tokens_prompt": 11152,
+      "tokens_completion": 1370,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "dtc_17",
+      "question": "What fault codes indicate a failing oxygen sensor?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_details"
+      ],
+      "actual_tools": [
+        "get_dtc_details"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 371.95,
+      "tokens_prompt": 24384,
+      "tokens_completion": 6939,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "dtc_18",
+      "question": "Which DTC codes are appearing for the first time in the fleet this month?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "trend_analysis",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_dtc_fleet_impact",
+        "get_fleet_dtc_distribution"
+      ],
+      "actual_tools": [
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 17.91,
+      "tokens_prompt": 8905,
+      "tokens_completion": 729,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": [
+        "sql_error"
+      ]
+    },
+    {
+      "id": "dtc_19",
+      "question": "Are there safety-critical DTC codes that require immediate attention across the fleet?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_dtc_details",
+        "get_fleet_dtc_distribution"
+      ],
+      "actual_tools": [
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_health",
+        "get_fleet_system_health",
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 0.5,
+      "keyword_hits": 1.0,
+      "latency_sec": 38.84,
+      "tokens_prompt": 26639,
+      "tokens_completion": 1545,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "failure_reasons": []
+    },
+    {
+      "id": "dtc_20",
+      "question": "Explain the relationship between P0300 misfires and catalytic converter damage.",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "fault_correlation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details",
+        "get_dtc_fleet_impact",
+        "get_fleet_system_health"
+      ],
+      "tool_recall": 1.0,
+      "keyword_hits": 1.0,
+      "latency_sec": 151.24,
+      "tokens_prompt": 35063,
+      "tokens_completion": 8162,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "failure_reasons": []
+    }
+  ]
+}
