@@ -160,6 +160,19 @@ PROMPT_VERSIONS = {
     "explain":        "v1",
 }
 
+
+def _build_version_metadata() -> dict:
+    """Build canonical release/version metadata for observability and eval tracking."""
+    return {
+        'release_version': os.getenv('AI_ANALYST_RELEASE_VERSION', ''),
+        'service_version': os.getenv('AI_ANALYST_SERVICE_VERSION', ''),
+        'git_commit': os.getenv('GIT_COMMIT_SHA', ''),
+        'env_name': os.getenv('DEPLOYMENT_ENV', os.getenv('ENV_NAME', 'dev')),
+        'model_name': os.getenv('AI_ANALYST_MODEL_NAME', 'gpt-3.5-turbo'),
+        'dataset_version': os.getenv('AI_ANALYST_DATASET_VERSION', ''),
+        'prompt_versions': PROMPT_VERSIONS,
+    }
+
 # ── System prompt — Taabi AI Analyst ────────────────────────────
 
 SYSTEM_PROMPT = """\
@@ -1901,7 +1914,8 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
         raw = json.dumps({
             "q": user_query.lower().strip(),
             "customer": context.get("customer_name", "") if context else "",
-            "mode": context.get("mode", "") if context else ""
+            "mode": context.get("mode", "") if context else "",
+            "release_version": _build_version_metadata().get('release_version', ''),
         }, sort_keys=True)
         return "resp:" + hashlib.md5(raw.encode()).hexdigest()
 
@@ -1948,6 +1962,7 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
         'trace_log':                     [],
         'request_id':                    str(uuid.uuid4()),
     }
+    version_meta = _build_version_metadata()
 
     t0 = time.time()
     success = 1
@@ -1977,6 +1992,8 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
                     'ai_analyst',
                     f"customer:{customer_name}",
                     f"mode:{mode}",
+                    f"env:{version_meta.get('env_name', 'dev')}",
+                    f"release:{version_meta.get('release_version', 'unknown')}",
                 ],
                 # Structured metadata (for deep debugging)
                 'metadata': {
@@ -1984,6 +2001,7 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
                     'mode': mode,
                     'query': user_query,
                     'request_id': initial_state.get('request_id'),
+                    **version_meta,
                 }
             },
         )
@@ -2021,6 +2039,12 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
                         'has_vehicle':    bool((context or {}).get('vehicle_number')),
                         'has_dtc':        bool((context or {}).get('dtc_code')),
                         'failure_reason': ','.join(failure_reasons) if failure_reasons else 'none',
+                        'release_version': version_meta.get('release_version', ''),
+                        'service_version': version_meta.get('service_version', ''),
+                        'git_commit': version_meta.get('git_commit', ''),
+                        'env_name': version_meta.get('env_name', ''),
+                        'model_name': version_meta.get('model_name', ''),
+                        'dataset_version': version_meta.get('dataset_version', ''),
                         **{f"{k}_prompt_v": v for k, v in PROMPT_VERSIONS.items()},
                     })
                     mlflow.log_metrics({
@@ -2048,6 +2072,7 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
         'failure_reasons': final_state.get('failure_reasons', []),
         'trace_log':       final_state.get('trace_log', []),
         'request_id':      final_state.get('request_id', None),
+        'version':         version_meta,
     }
     intent = response_payload.get("intent")
     # Only cache if not casual, not empty/short, not error

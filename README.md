@@ -65,3 +65,36 @@ Current behavior preserves output correctness by rebuilding analytics outputs af
 - `/api/dtc/{dtc_code}/overview`
 - `/api/dtc/{dtc_code}/trend`
 - `/api/dtc/{dtc_code}/affected-vehicles`
+
+## Developer monitoring and version tracking
+
+This project supports developer-only observability through LangSmith (trace-level)
+and MLflow (aggregate metrics/evaluation trends). No customer-facing UI changes are required.
+
+### Recommended environment variables
+
+- `LANGSMITH_TRACING=true`
+- `LANGSMITH_API_KEY=...`
+- `LANGSMITH_PROJECT=AI for Vehicle Health`
+- `MLFLOW_TRACKING_URI=http://localhost:5000`
+
+Version metadata (attached to runtime traces and eval logs):
+
+- `AI_ANALYST_RELEASE_VERSION=2026.03.22.1`
+- `AI_ANALYST_SERVICE_VERSION=backend-v1`
+- `AI_ANALYST_MODEL_NAME=gpt-3.5-turbo`
+- `AI_ANALYST_DATASET_VERSION=v1`
+- `DEPLOYMENT_ENV=dev`
+- `GIT_COMMIT_SHA=<short-or-full-sha>`
+
+### Evaluation modes
+
+Run heuristic-only scoring (default):
+
+`python evaluation/run_evaluation.py`
+
+Run semantic LLM-judge scoring (costly but richer):
+
+- `EVAL_USE_LLM_JUDGE=1`
+- Optional: `EVAL_JUDGE_MODEL=gpt-4o-mini`
+- `python evaluation/run_evaluation.py`
