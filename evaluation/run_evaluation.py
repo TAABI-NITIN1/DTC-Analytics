@@ -60,6 +60,16 @@ except ImportError:
 
 EVAL_DIR = Path(__file__).parent
 
+IMPORTANT_METRICS = [
+    'weighted_score',
+    'avg_correctness',
+    'avg_hallucination_risk',
+    'intent_accuracy',
+    'avg_tool_f1',
+    'avg_latency_sec',
+    'failure_rate',
+]
+
 
 def _safe_div(num: float, den: float, fallback: float = 0.0) -> float:
     return num / den if den else fallback
@@ -335,20 +345,10 @@ def run_evaluation() -> None:
     print(f'\n{"=" * 60}')
     print(f'  Questions evaluated   : {n}')
     print(f'  Intent accuracy       : {intent_accuracy:.1%}')
-    print(f'  Avg tool recall       : {avg_tool_recall:.1%}')
-    print(f'  Avg tool precision    : {avg_tool_precision:.1%}')
     print(f'  Avg tool F1           : {avg_tool_f1:.1%}')
-    print(f'  Avg keyword accuracy  : {avg_keyword_acc:.1%}')
     print(f'  Correctness           : {avg_correctness:.1%}')
-    print(f'  Relevance             : {avg_relevance:.1%}')
-    print(f'  Completeness          : {avg_completeness:.1%}')
     print(f'  Hallucination risk    : {avg_hallucination_risk:.1%}')
     print(f'  Avg latency           : {avg_latency:.2f}s')
-    print(f'  Avg node latency      : {avg_node_latency:.2f}s')
-    print(f'  Avg node max latency  : {avg_node_latency_max:.2f}s')
-    print(f'  Total tokens (prompt) : {total_tok_prompt:,}')
-    print(f'  Total tokens (compl.) : {total_tok_comp:,}')
-    print(f'  Total tokens (all)    : {total_tok_all:,}')
     print(f'  Failure rate          : {failure_rate:.1%}')
     print(f'  Weighted score        : {weighted_score:.1%}')
     print(f'{"=" * 60}\n')
@@ -371,25 +371,13 @@ def run_evaluation() -> None:
                     'dataset_version':  version_meta.get('dataset_version', 'v1'),
                 })
                 mlflow.log_metrics({
-                    'intent_accuracy':         round(intent_accuracy, 4),
-                    'avg_tool_recall':         round(avg_tool_recall, 4),
-                    'avg_tool_precision':      round(avg_tool_precision, 4),
-                    'avg_tool_f1':             round(avg_tool_f1, 4),
-                    'avg_keyword_accuracy':    round(avg_keyword_acc, 4),
-                    'avg_correctness':         round(avg_correctness, 4),
-                    'avg_relevance':           round(avg_relevance, 4),
-                    'avg_completeness':        round(avg_completeness, 4),
-                    'avg_hallucination_risk':  round(avg_hallucination_risk, 4),
-                    'avg_hallucination_score': round(avg_hallucination_score, 4),
-                    'avg_latency_sec':         round(avg_latency, 3),
-                    'avg_node_latency_sec':    round(avg_node_latency, 3),
-                    'avg_node_max_latency_sec': round(avg_node_latency_max, 3),
-                    'total_tokens_prompt':     float(total_tok_prompt),
-                    'total_tokens_completion': float(total_tok_comp),
-                    'total_tokens_all':        float(total_tok_all),
-                    'failure_rate':            round(failure_rate, 4),
                     'weighted_score':          round(weighted_score, 4),
-                    'questions_evaluated':     float(n),
+                    'avg_correctness':         round(avg_correctness, 4),
+                    'avg_hallucination_risk':  round(avg_hallucination_risk, 4),
+                    'intent_accuracy':         round(intent_accuracy, 4),
+                    'avg_tool_f1':             round(avg_tool_f1, 4),
+                    'avg_latency_sec':         round(avg_latency, 3),
+                    'failure_rate':            round(failure_rate, 4),
                 })
             print(f"  [MLflow] Metrics logged to experiment 'taabi_ai_analyst_eval' (run: {run_name})")
         except Exception as exc:
@@ -405,24 +393,14 @@ def run_evaluation() -> None:
         'version': version_meta,
         'summary': {
             'questions_evaluated':    n,
-            'intent_accuracy':        round(intent_accuracy, 4),
-            'avg_tool_recall':        round(avg_tool_recall, 4),
-            'avg_tool_precision':     round(avg_tool_precision, 4),
-            'avg_tool_f1':            round(avg_tool_f1, 4),
-            'avg_keyword_accuracy':   round(avg_keyword_acc, 4),
-            'avg_correctness':        round(avg_correctness, 4),
-            'avg_relevance':          round(avg_relevance, 4),
-            'avg_completeness':       round(avg_completeness, 4),
-            'avg_hallucination_risk': round(avg_hallucination_risk, 4),
-            'avg_hallucination_score': round(avg_hallucination_score, 4),
-            'avg_latency_sec':        round(avg_latency, 3),
-            'avg_node_latency_sec':   round(avg_node_latency, 3),
-            'avg_node_max_latency_sec': round(avg_node_latency_max, 3),
-            'total_tokens_prompt':    total_tok_prompt,
-            'total_tokens_completion': total_tok_comp,
-            'total_tokens_all':       total_tok_all,
-            'failure_rate':           round(failure_rate, 4),
+            'important_metrics': IMPORTANT_METRICS,
             'weighted_score':         round(weighted_score, 4),
+            'avg_correctness':        round(avg_correctness, 4),
+            'avg_hallucination_risk': round(avg_hallucination_risk, 4),
+            'intent_accuracy':        round(intent_accuracy, 4),
+            'avg_tool_f1':            round(avg_tool_f1, 4),
+            'avg_latency_sec':        round(avg_latency, 3),
+            'failure_rate':           round(failure_rate, 4),
         },
         'per_question': scored_results,
     }
