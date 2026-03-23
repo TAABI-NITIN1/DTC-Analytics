@@ -168,7 +168,7 @@ def _build_version_metadata() -> dict:
         'service_version': os.getenv('AI_ANALYST_SERVICE_VERSION', ''),
         'git_commit': os.getenv('GIT_COMMIT_SHA', ''),
         'env_name': os.getenv('DEPLOYMENT_ENV', os.getenv('ENV_NAME', 'dev')),
-        'model_name': os.getenv('AI_ANALYST_MODEL_NAME', 'gpt-3.5-turbo'),
+        'model_name': os.getenv('AI_ANALYST_MODEL_NAME', 'gpt-5.4-mini'),
         'dataset_version': os.getenv('AI_ANALYST_DATASET_VERSION', ''),
         'prompt_versions': PROMPT_VERSIONS,
     }
@@ -1258,7 +1258,7 @@ _TOOL_HANDLERS = {
 def _reasoning_llm() -> ChatOpenAI:
     """LLM for reasoning nodes — no tools bound."""
     return ChatOpenAI(
-        model='gpt-3.5-turbo',
+        model='gpt-5.4-mini',
         api_key=os.getenv('OPENAI_API_KEY', ''),
         temperature=0.2,
         timeout=60,
@@ -1271,7 +1271,7 @@ def _reasoning_llm() -> ChatOpenAI:
 def _tools_llm() -> ChatOpenAI:
     """LLM for data-investigation node — tools bound."""
     return ChatOpenAI(
-        model='gpt-3.5-turbo',
+        model='gpt-5.4-mini',
         api_key=os.getenv('OPENAI_API_KEY', ''),
         temperature=0.1,
         timeout=60,
