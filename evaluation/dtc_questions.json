@@ -2,161 +2,363 @@
   {
     "id": "dtc_01",
     "question": "What does fault code P0300 mean and how serious is it?",
-    "context": {"mode": "dtc", "dtc_code": "P0300"},
+    "context": {
+      "mode": "dtc",
+      "dtc_code": "P0300"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_details"],
-    "expected_output_contains": ["P0300", "misfire", "engine"]
+    "expected_tools": [
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "P0300",
+      "misfire",
+      "engine"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'What does fault code P0300 mean and how serious is it?' with specific focus on DTC P0300. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_details] and explicitly address [P0300, misfire, engine] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_02",
     "question": "How many vehicles in the fleet are affected by code P0420?",
-    "context": {"mode": "dtc", "dtc_code": "P0420"},
+    "context": {
+      "mode": "dtc",
+      "dtc_code": "P0420"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_fleet_impact"],
-    "expected_output_contains": ["P0420", "vehicle", "fleet"]
+    "expected_tools": [
+      "get_dtc_fleet_impact"
+    ],
+    "expected_output_contains": [
+      "P0420",
+      "vehicle",
+      "fleet"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'How many vehicles in the fleet are affected by code P0420?' with specific focus on DTC P0420. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_fleet_impact] and explicitly address [P0420, vehicle, fleet] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_03",
     "question": "What other fault codes typically appear together with P0300?",
-    "context": {"mode": "dtc", "dtc_code": "P0300"},
+    "context": {
+      "mode": "dtc",
+      "dtc_code": "P0300"
+    },
     "expected_intent": "fault_correlation",
-    "expected_tools": ["get_dtc_cooccurrence", "get_dtc_details"],
-    "expected_output_contains": ["P0300", "co-occur", "fault"]
+    "expected_tools": [
+      "get_dtc_cooccurrence",
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "P0300",
+      "co-occur",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'What other fault codes typically appear together with P0300?' with specific focus on DTC P0300. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_cooccurrence, get_dtc_details] and explicitly address [P0300, co-occur, fault] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_04",
     "question": "What is the fleet-wide impact of DTC P0171?",
-    "context": {"mode": "dtc", "dtc_code": "P0171"},
+    "context": {
+      "mode": "dtc",
+      "dtc_code": "P0171"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_fleet_impact", "get_dtc_details"],
-    "expected_output_contains": ["P0171", "fleet", "impact"]
+    "expected_tools": [
+      "get_dtc_fleet_impact",
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "P0171",
+      "fleet",
+      "impact"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'What is the fleet-wide impact of DTC P0171?' with specific focus on DTC P0171. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_fleet_impact, get_dtc_details] and explicitly address [P0171, fleet, impact] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_05",
     "question": "What are the most common powertrain fault codes in the fleet?",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_fleet_dtc_distribution", "get_dtc_details"],
-    "expected_output_contains": ["powertrain", "fault", "code"]
+    "expected_tools": [
+      "get_fleet_dtc_distribution",
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "powertrain",
+      "fault",
+      "code"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'What are the most common powertrain fault codes in the fleet?'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_fleet_dtc_distribution, get_dtc_details] and explicitly address [powertrain, fault, code] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_06",
     "question": "Which DTC codes are linked to emission failures?",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_details", "get_fleet_dtc_distribution"],
-    "expected_output_contains": ["emission", "DTC", "code"]
+    "expected_tools": [
+      "get_dtc_details",
+      "get_fleet_dtc_distribution"
+    ],
+    "expected_output_contains": [
+      "emission",
+      "DTC",
+      "code"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'Which DTC codes are linked to emission failures?'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_details, get_fleet_dtc_distribution] and explicitly address [emission, DTC, code] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_07",
     "question": "What fault codes commonly occur at the same time as U0100?",
-    "context": {"mode": "dtc", "dtc_code": "U0100"},
+    "context": {
+      "mode": "dtc",
+      "dtc_code": "U0100"
+    },
     "expected_intent": "fault_correlation",
-    "expected_tools": ["get_dtc_cooccurrence", "get_dtc_details"],
-    "expected_output_contains": ["U0100", "co-occur", "fault"]
+    "expected_tools": [
+      "get_dtc_cooccurrence",
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "U0100",
+      "co-occur",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'What fault codes commonly occur at the same time as U0100?' with specific focus on DTC U0100. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_cooccurrence, get_dtc_details] and explicitly address [U0100, co-occur, fault] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_08",
     "question": "How long does it typically take to resolve DTC P0420 in the fleet?",
-    "context": {"mode": "dtc", "dtc_code": "P0420"},
+    "context": {
+      "mode": "dtc",
+      "dtc_code": "P0420"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_fleet_impact", "get_dtc_details"],
-    "expected_output_contains": ["P0420", "resolution", "time"]
+    "expected_tools": [
+      "get_dtc_fleet_impact",
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "P0420",
+      "resolution",
+      "time"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'How long does it typically take to resolve DTC P0420 in the fleet?' with specific focus on DTC P0420. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_fleet_impact, get_dtc_details] and explicitly address [P0420, resolution, time] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_09",
     "question": "What are the most severe DTC codes currently active in the fleet?",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_fleet_dtc_distribution", "get_dtc_details"],
-    "expected_output_contains": ["severe", "DTC", "active"]
+    "expected_tools": [
+      "get_fleet_dtc_distribution",
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "severe",
+      "DTC",
+      "active"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'What are the most severe DTC codes currently active in the fleet?'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_fleet_dtc_distribution, get_dtc_details] and explicitly address [severe, DTC, active] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_10",
     "question": "Is P0700 a transmission-related fault and what does it indicate?",
-    "context": {"mode": "dtc", "dtc_code": "P0700"},
+    "context": {
+      "mode": "dtc",
+      "dtc_code": "P0700"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_details"],
-    "expected_output_contains": ["P0700", "transmission", "fault"]
+    "expected_tools": [
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "P0700",
+      "transmission",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'Is P0700 a transmission-related fault and what does it indicate?' with specific focus on DTC P0700. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_details] and explicitly address [P0700, transmission, fault] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_11",
     "question": "Which DTC codes have the highest fleet-wide recurrence rate?",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_fleet_impact"],
-    "expected_output_contains": ["recurrence", "DTC", "fleet"]
+    "expected_tools": [
+      "get_dtc_fleet_impact"
+    ],
+    "expected_output_contains": [
+      "recurrence",
+      "DTC",
+      "fleet"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'Which DTC codes have the highest fleet-wide recurrence rate?'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_fleet_impact] and explicitly address [recurrence, DTC, fleet] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_12",
     "question": "What are the root causes of P0171 (fuel system running lean)?",
-    "context": {"mode": "dtc", "dtc_code": "P0171"},
+    "context": {
+      "mode": "dtc",
+      "dtc_code": "P0171"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_details"],
-    "expected_output_contains": ["P0171", "fuel", "lean"]
+    "expected_tools": [
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "P0171",
+      "fuel",
+      "lean"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'What are the root causes of P0171 (fuel system running lean)?' with specific focus on DTC P0171. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_details] and explicitly address [P0171, fuel, lean] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_13",
     "question": "Are there any fault code combinations that could predict engine failure?",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "fault_correlation",
-    "expected_tools": ["get_dtc_cooccurrence", "get_dtc_fleet_impact"],
-    "expected_output_contains": ["engine", "failure", "combination"]
+    "expected_tools": [
+      "get_dtc_cooccurrence",
+      "get_dtc_fleet_impact"
+    ],
+    "expected_output_contains": [
+      "engine",
+      "failure",
+      "combination"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'Are there any fault code combinations that could predict engine failure?'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_cooccurrence, get_dtc_fleet_impact] and explicitly address [engine, failure, combination] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_14",
     "question": "Compare the fleet impact of P0300 versus P0420.",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_fleet_impact", "get_dtc_details"],
-    "expected_output_contains": ["P0300", "P0420", "impact"]
+    "expected_tools": [
+      "get_dtc_fleet_impact",
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "P0300",
+      "P0420",
+      "impact"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'Compare the fleet impact of P0300 versus P0420.'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_fleet_impact, get_dtc_details] and explicitly address [P0300, P0420, impact] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_15",
     "question": "What is the resolution rate for B-code body-system faults in the fleet?",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_fleet_dtc_distribution", "get_dtc_fleet_impact"],
-    "expected_output_contains": ["resolution", "body", "fault"]
+    "expected_tools": [
+      "get_fleet_dtc_distribution",
+      "get_dtc_fleet_impact"
+    ],
+    "expected_output_contains": [
+      "resolution",
+      "body",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'What is the resolution rate for B-code body-system faults in the fleet?'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_fleet_dtc_distribution, get_dtc_fleet_impact] and explicitly address [resolution, body, fault] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_16",
     "question": "Which DTC codes are most frequently causing vehicle downtime?",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_fleet_impact"],
-    "expected_output_contains": ["downtime", "DTC", "vehicle"]
+    "expected_tools": [
+      "get_dtc_fleet_impact"
+    ],
+    "expected_output_contains": [
+      "downtime",
+      "DTC",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'Which DTC codes are most frequently causing vehicle downtime?'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_fleet_impact] and explicitly address [downtime, DTC, vehicle] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_17",
     "question": "What fault codes indicate a failing oxygen sensor?",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_dtc_details"],
-    "expected_output_contains": ["oxygen", "sensor", "fault"]
+    "expected_tools": [
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "oxygen",
+      "sensor",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'What fault codes indicate a failing oxygen sensor?'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_details] and explicitly address [oxygen, sensor, fault] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_18",
     "question": "Which DTC codes are appearing for the first time in the fleet this month?",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_fleet_dtc_distribution", "get_dtc_fleet_impact"],
-    "expected_output_contains": ["new", "DTC", "fleet"]
+    "expected_tools": [
+      "get_fleet_dtc_distribution",
+      "get_dtc_fleet_impact"
+    ],
+    "expected_output_contains": [
+      "new",
+      "DTC",
+      "fleet"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'Which DTC codes are appearing for the first time in the fleet this month?'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_fleet_dtc_distribution, get_dtc_fleet_impact] and explicitly address [new, DTC, fleet] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_19",
     "question": "Are there safety-critical DTC codes that require immediate attention across the fleet?",
-    "context": {"mode": "dtc"},
+    "context": {
+      "mode": "dtc"
+    },
     "expected_intent": "dtc_investigation",
-    "expected_tools": ["get_fleet_dtc_distribution", "get_dtc_details"],
-    "expected_output_contains": ["safety", "critical", "immediate"]
+    "expected_tools": [
+      "get_fleet_dtc_distribution",
+      "get_dtc_details"
+    ],
+    "expected_output_contains": [
+      "safety",
+      "critical",
+      "immediate"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'Are there safety-critical DTC codes that require immediate attention across the fleet?'. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_fleet_dtc_distribution, get_dtc_details] and explicitly address [safety, critical, immediate] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   },
   {
     "id": "dtc_20",
     "question": "Explain the relationship between P0300 misfires and catalytic converter damage.",
-    "context": {"mode": "dtc", "dtc_code": "P0300"},
+    "context": {
+      "mode": "dtc",
+      "dtc_code": "P0300"
+    },
     "expected_intent": "fault_correlation",
-    "expected_tools": ["get_dtc_details", "get_dtc_cooccurrence"],
-    "expected_output_contains": ["P0300", "catalytic", "misfire"]
+    "expected_tools": [
+      "get_dtc_details",
+      "get_dtc_cooccurrence"
+    ],
+    "expected_output_contains": [
+      "P0300",
+      "catalytic",
+      "misfire"
+    ],
+    "reference_answer": "Summary: Provide a detailed DTC-level explanation for 'Explain the relationship between P0300 misfires and catalytic converter damage.' with specific focus on DTC P0300. Explain fault meaning, subsystem impact, severity, probable root causes, co-occurrence or fleet impact signals, and resolution implications. Use expected evidence from [get_dtc_details, get_dtc_cooccurrence] and explicitly address [P0300, catalytic, misfire] with clear interpretation. Finish with corrective actions, preventive guidance, and practical fleet-level recommendations."
   }
 ]

@@ -2,16 +2,7 @@ import threading
 import functools
 import uuid
 
-import redis
 import json
-import hashlib
-
-redis_client = redis.Redis(
-    host="localhost",
-    port=6379,
-    db=0,
-    decode_responses=True  # important (no bytes)
-)
 
 # ── Observability: Node-level tracing decorator ────────────────
 def trace_node(name):
@@ -871,24 +862,10 @@ def _exec_sql(query: str) -> list[dict]:
 def _safe_exec(query: str) -> dict:
     req_id = str(uuid.uuid4())
 
-    # 🔑 Create cache key
-    key = "sql:" + hashlib.md5(query.encode()).hexdigest()
-
-    # ✅ Check cache
-    cached = redis_client.get(key)
-    if cached:
-        log.info(f"[{req_id}] [CACHE HIT] SQL")
-        return json.loads(cached)
-
     try:
         log.info(f"[{req_id}] [SQL QUERY]\n{query}")
         rows = _exec_sql(query)
-        result = {"data": rows, "count": len(rows)}
-
-        # ✅ Store in cache (TTL 5 min)
-        redis_client.setex(key, 300, json.dumps(result))
-
-        return result
+        return {"data": rows, "count": len(rows)}
 
     except Exception as exc:
         log.error(f"[{req_id}] [SQL ERROR] {exc}")
@@ -1765,6 +1742,8 @@ def _node_explain(state: AgentState) -> dict:
     """Node 8 — Final response generation"""
 
     intent = state.get("intent")
+    ctx = state.get('context') or {}
+    force_detailed = bool(ctx.get('force_detailed_response'))
 
     # ✅ Handle casual conversation FIRST
     if intent == "casual_conversation":
@@ -1803,8 +1782,8 @@ def _node_explain(state: AgentState) -> dict:
     if recommendation:
         parts.append(f"\nStructured Recommendation:\n{recommendation}")
 
-    # ✅ Optional: make responses shorter for simple queries
-    if intent in ["fleet_health", "trend_analysis"]:
+    # ✅ Optional: force detailed responses for evaluation/testing
+    if force_detailed or intent in ["fleet_health", "trend_analysis"]:
         system_prompt = _EXPLAIN_PROMPT
     else:
         system_prompt = """Answer briefly and directly.
@@ -1905,25 +1884,6 @@ _agent_graph = _builder.compile()
 # ── Main chat function ──────────────────────────────────────────
 
 def chat(messages: list[dict], context: dict | None = None) -> dict:
-    def get_cache_key(messages, context):
-        user_query = ""
-        for msg in reversed(messages):
-            if msg.get("role") == "user":
-                user_query = msg.get("content", "")
-                break
-        raw = json.dumps({
-            "q": user_query.lower().strip(),
-            "customer": context.get("customer_name", "") if context else "",
-            "mode": context.get("mode", "") if context else "",
-            "release_version": _build_version_metadata().get('release_version', ''),
-        }, sort_keys=True)
-        return "resp:" + hashlib.md5(raw.encode()).hexdigest()
-
-    cache_key = get_cache_key(messages, context or {})
-    cached = redis_client.get(cache_key)
-    if cached:
-        log.info("[CACHE HIT] Returning cached response")
-        return json.loads(cached)
     """
     Process a conversation and return {"text": "...", "chart": {...}|null}.
     messages: list of {"role": "user"|"assistant", "content": "..."}
@@ -2074,18 +2034,6 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
         'request_id':      final_state.get('request_id', None),
         'version':         version_meta,
     }
-    intent = response_payload.get("intent")
-    # Only cache if not casual, not empty/short, not error
-    if intent not in ["casual_conversation"] and len(text or "") > 20 and not response_payload.get('failure_reasons'):
-        try:
-            redis_client.setex(
-                cache_key,
-                21600,  # 6 hours
-                json.dumps(response_payload)
-            )
-            log.info("[CACHE STORE] Response cached for 6 hours")
-        except Exception as e:
-            log.warning(f"[CACHE ERROR] {e}")
     return response_payload
 
 

@@ -14,4 +14,3 @@ mlflow==3.10.1
 tiktoken>=0.7,<1
 pyarrow>=18.1.0
 langsmith==0.1.125
-redis==7.3.0
