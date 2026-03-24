@@ -2,161 +2,354 @@
   {
     "id": "veh_01",
     "question": "Which vehicles have the lowest health scores in the fleet?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_health"],
-    "expected_output_contains": ["vehicle", "health", "score"]
+    "expected_tools": [
+      "get_vehicle_health"
+    ],
+    "expected_output_contains": [
+      "vehicle",
+      "health",
+      "score"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Which vehicles have the lowest health scores in the fleet?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_health] and cover terms [vehicle, health, score] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_02",
     "question": "Show me vehicles that have had more than 5 faults this month.",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults"],
-    "expected_output_contains": ["vehicle", "fault", "month"]
+    "expected_tools": [
+      "get_vehicle_faults"
+    ],
+    "expected_output_contains": [
+      "vehicle",
+      "fault",
+      "month"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Show me vehicles that have had more than 5 faults this month.'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults] and cover terms [vehicle, fault, month] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_03",
     "question": "Which vehicles have unresolved critical faults?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults", "get_vehicle_health"],
-    "expected_output_contains": ["critical", "fault", "unresolved"]
+    "expected_tools": [
+      "get_vehicle_faults",
+      "get_vehicle_health"
+    ],
+    "expected_output_contains": [
+      "critical",
+      "fault",
+      "unresolved"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Which vehicles have unresolved critical faults?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults, get_vehicle_health] and cover terms [critical, fault, unresolved] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_04",
     "question": "What are the recurring faults for vehicles with poor health scores?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "fault_correlation",
-    "expected_tools": ["get_vehicle_faults", "get_vehicle_health"],
-    "expected_output_contains": ["recurring", "fault", "health"]
+    "expected_tools": [
+      "get_vehicle_faults",
+      "get_vehicle_health"
+    ],
+    "expected_output_contains": [
+      "recurring",
+      "fault",
+      "health"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'What are the recurring faults for vehicles with poor health scores?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults, get_vehicle_health] and cover terms [recurring, fault, health] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_05",
     "question": "Which vehicles are most at risk of breakdown in the next 7 days?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_health", "get_maintenance_priority"],
-    "expected_output_contains": ["risk", "breakdown", "vehicle"]
+    "expected_tools": [
+      "get_vehicle_health",
+      "get_maintenance_priority"
+    ],
+    "expected_output_contains": [
+      "risk",
+      "breakdown",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Which vehicles are most at risk of breakdown in the next 7 days?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_health, get_maintenance_priority] and cover terms [risk, breakdown, vehicle] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_06",
     "question": "Show me vehicles with engine fault history in the past 30 days.",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults"],
-    "expected_output_contains": ["engine", "fault", "vehicle"]
+    "expected_tools": [
+      "get_vehicle_faults"
+    ],
+    "expected_output_contains": [
+      "engine",
+      "fault",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Show me vehicles with engine fault history in the past 30 days.'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults] and cover terms [engine, fault, vehicle] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_07",
     "question": "Which vehicles have the highest number of P-code (powertrain) faults?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults"],
-    "expected_output_contains": ["vehicle", "powertrain", "fault"]
+    "expected_tools": [
+      "get_vehicle_faults"
+    ],
+    "expected_output_contains": [
+      "vehicle",
+      "powertrain",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Which vehicles have the highest number of P-code (powertrain) faults?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults] and cover terms [vehicle, powertrain, fault] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_08",
     "question": "Are there any vehicles showing braking system issues?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults", "get_fleet_system_health"],
-    "expected_output_contains": ["braking", "system", "vehicle"]
+    "expected_tools": [
+      "get_vehicle_faults",
+      "get_fleet_system_health"
+    ],
+    "expected_output_contains": [
+      "braking",
+      "system",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Are there any vehicles showing braking system issues?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults, get_fleet_system_health] and cover terms [braking, system, vehicle] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_09",
     "question": "Which vehicles have been out of service the longest due to faults?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults", "get_vehicle_health"],
-    "expected_output_contains": ["vehicle", "service", "fault"]
+    "expected_tools": [
+      "get_vehicle_faults",
+      "get_vehicle_health"
+    ],
+    "expected_output_contains": [
+      "vehicle",
+      "service",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Which vehicles have been out of service the longest due to faults?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults, get_vehicle_health] and cover terms [vehicle, service, fault] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_10",
     "question": "Show me the fault history trend for the worst performing vehicles.",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "fault_correlation",
-    "expected_tools": ["get_vehicle_faults", "get_vehicle_health"],
-    "expected_output_contains": ["fault", "trend", "vehicle"]
+    "expected_tools": [
+      "get_vehicle_faults",
+      "get_vehicle_health"
+    ],
+    "expected_output_contains": [
+      "fault",
+      "trend",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Show me the fault history trend for the worst performing vehicles.'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults, get_vehicle_health] and cover terms [fault, trend, vehicle] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_11",
     "question": "Which vehicles need their battery or electrical system checked?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults", "get_fleet_system_health"],
-    "expected_output_contains": ["electrical", "battery", "vehicle"]
+    "expected_tools": [
+      "get_vehicle_faults",
+      "get_fleet_system_health"
+    ],
+    "expected_output_contains": [
+      "electrical",
+      "battery",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Which vehicles need their battery or electrical system checked?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults, get_fleet_system_health] and cover terms [electrical, battery, vehicle] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_12",
     "question": "Identify vehicles with recurring transmission faults.",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "fault_correlation",
-    "expected_tools": ["get_vehicle_faults"],
-    "expected_output_contains": ["transmission", "recurring", "fault"]
+    "expected_tools": [
+      "get_vehicle_faults"
+    ],
+    "expected_output_contains": [
+      "transmission",
+      "recurring",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Identify vehicles with recurring transmission faults.'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults] and cover terms [transmission, recurring, fault] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_13",
     "question": "Which vehicles had faults with slow resolution times (more than 3 days)?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults"],
-    "expected_output_contains": ["resolution", "fault", "vehicle"]
+    "expected_tools": [
+      "get_vehicle_faults"
+    ],
+    "expected_output_contains": [
+      "resolution",
+      "fault",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Which vehicles had faults with slow resolution times (more than 3 days)?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults] and cover terms [resolution, fault, vehicle] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_14",
     "question": "Show me vehicles with multiple co-occurring fault codes.",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "fault_correlation",
-    "expected_tools": ["get_vehicle_faults", "get_dtc_cooccurrence"],
-    "expected_output_contains": ["co-occurring", "fault", "vehicle"]
+    "expected_tools": [
+      "get_vehicle_faults",
+      "get_dtc_cooccurrence"
+    ],
+    "expected_output_contains": [
+      "co-occurring",
+      "fault",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Show me vehicles with multiple co-occurring fault codes.'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults, get_dtc_cooccurrence] and cover terms [co-occurring, fault, vehicle] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_15",
     "question": "Which vehicles are due for preventive maintenance based on their fault patterns?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_maintenance_priority", "get_vehicle_health"],
-    "expected_output_contains": ["preventive", "maintenance", "vehicle"]
+    "expected_tools": [
+      "get_maintenance_priority",
+      "get_vehicle_health"
+    ],
+    "expected_output_contains": [
+      "preventive",
+      "maintenance",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Which vehicles are due for preventive maintenance based on their fault patterns?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_maintenance_priority, get_vehicle_health] and cover terms [preventive, maintenance, vehicle] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_16",
     "question": "List vehicles with fault recurrence in the last 7 days.",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults"],
-    "expected_output_contains": ["recurrence", "fault", "vehicle"]
+    "expected_tools": [
+      "get_vehicle_faults"
+    ],
+    "expected_output_contains": [
+      "recurrence",
+      "fault",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'List vehicles with fault recurrence in the last 7 days.'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults] and cover terms [recurrence, fault, vehicle] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_17",
     "question": "Which vehicles have emission system faults that could affect compliance?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults", "get_fleet_system_health"],
-    "expected_output_contains": ["emission", "compliance", "fault"]
+    "expected_tools": [
+      "get_vehicle_faults",
+      "get_fleet_system_health"
+    ],
+    "expected_output_contains": [
+      "emission",
+      "compliance",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Which vehicles have emission system faults that could affect compliance?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults, get_fleet_system_health] and cover terms [emission, compliance, fault] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_18",
     "question": "Show me vehicles with both engine and fuel system faults.",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "fault_correlation",
-    "expected_tools": ["get_vehicle_faults", "get_dtc_cooccurrence"],
-    "expected_output_contains": ["engine", "fuel", "fault"]
+    "expected_tools": [
+      "get_vehicle_faults",
+      "get_dtc_cooccurrence"
+    ],
+    "expected_output_contains": [
+      "engine",
+      "fuel",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Show me vehicles with both engine and fuel system faults.'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults, get_dtc_cooccurrence] and cover terms [engine, fuel, fault] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_19",
     "question": "Which vehicles had the most critical DTC codes this month?",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_faults", "get_fleet_dtc_distribution"],
-    "expected_output_contains": ["critical", "DTC", "vehicle"]
+    "expected_tools": [
+      "get_vehicle_faults",
+      "get_fleet_dtc_distribution"
+    ],
+    "expected_output_contains": [
+      "critical",
+      "DTC",
+      "vehicle"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Which vehicles had the most critical DTC codes this month?'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_faults, get_fleet_dtc_distribution] and cover terms [critical, DTC, vehicle] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   },
   {
     "id": "veh_20",
     "question": "Identify the top 5 vehicles in need of immediate attention and explain why.",
-    "context": {"mode": "vehicle"},
+    "context": {
+      "mode": "vehicle"
+    },
     "expected_intent": "vehicle_investigation",
-    "expected_tools": ["get_vehicle_health", "get_maintenance_priority"],
-    "expected_output_contains": ["vehicle", "immediate", "fault"]
+    "expected_tools": [
+      "get_vehicle_health",
+      "get_maintenance_priority"
+    ],
+    "expected_output_contains": [
+      "vehicle",
+      "immediate",
+      "fault"
+    ],
+    "reference_answer": "Summary: Provide a vehicle-focused diagnostic assessment for 'Identify the top 5 vehicles in need of immediate attention and explain why.'. Identify relevant vehicle/fault patterns, severity, recurrence, unresolved critical issues, and likely near-term risk (breakdown/downtime/compliance). Use evidence expected from [get_vehicle_health, get_maintenance_priority] and cover terms [vehicle, immediate, fault] in context, not as keywords only. End with prioritized maintenance recommendations and clear rationale for urgency."
   }
 ]

@@ -1,0 +1,1005 @@
+{
+  "timestamp": "2026-03-24T07:32:25.510195+00:00",
+  "version": {
+    "release_version": "",
+    "service_version": "",
+    "git_commit": "303a00cc",
+    "env_name": "dev",
+    "model_name": "gpt-3.5-turbo",
+    "dataset_version": "v1",
+    "evaluation_method": "llm_judge"
+  },
+  "summary": {
+    "questions_evaluated": 15,
+    "eval_customer_name": "VRL LOGISTICS LIMITED",
+    "metric_profile": "full",
+    "important_metrics": [
+      "weighted_score",
+      "avg_correctness",
+      "avg_hallucination_risk",
+      "intent_accuracy",
+      "avg_tool_f1",
+      "avg_latency_sec",
+      "failure_rate"
+    ],
+    "full_metrics": [
+      "intent_accuracy",
+      "avg_tool_recall",
+      "avg_tool_precision",
+      "avg_tool_f1",
+      "avg_keyword_accuracy",
+      "avg_correctness",
+      "avg_relevance",
+      "avg_completeness",
+      "avg_hallucination_risk",
+      "avg_hallucination_score",
+      "avg_latency_sec",
+      "avg_node_latency_sec",
+      "avg_node_max_latency_sec",
+      "total_tokens_prompt",
+      "total_tokens_completion",
+      "total_tokens_all",
+      "avg_tokens_per_question",
+      "avg_prompt_tokens_per_question",
+      "avg_completion_tokens_per_question",
+      "failure_rate",
+      "failed_questions_count",
+      "successful_questions_count",
+      "weighted_score",
+      "questions_evaluated",
+      "llm_judge_ratio",
+      "context_length_error_rate",
+      "tool_usage_rate"
+    ],
+    "weighted_score": 0.8701,
+    "avg_correctness": 0.9133,
+    "avg_hallucination_risk": 0.1133,
+    "intent_accuracy": 0.6667,
+    "avg_tool_f1": 0.6001,
+    "avg_latency_sec": 17.597,
+    "failure_rate": 0.2667,
+    "full_metric_values": {
+      "intent_accuracy": 0.6667,
+      "avg_tool_recall": 0.5667,
+      "avg_tool_precision": 0.6667,
+      "avg_tool_f1": 0.6001,
+      "avg_keyword_accuracy": 1.0,
+      "avg_correctness": 0.9133,
+      "avg_relevance": 0.94,
+      "avg_completeness": 0.8633,
+      "avg_hallucination_risk": 0.1133,
+      "avg_hallucination_score": 0.8867,
+      "avg_latency_sec": 17.597,
+      "avg_node_latency_sec": 0.0,
+      "avg_node_max_latency_sec": 0.0,
+      "total_tokens_prompt": 131917.0,
+      "total_tokens_completion": 22150.0,
+      "total_tokens_all": 154067.0,
+      "avg_tokens_per_question": 10271.133,
+      "avg_prompt_tokens_per_question": 8794.467,
+      "avg_completion_tokens_per_question": 1476.667,
+      "failure_rate": 0.2667,
+      "failed_questions_count": 4.0,
+      "successful_questions_count": 11.0,
+      "weighted_score": 0.8701,
+      "questions_evaluated": 15.0,
+      "llm_judge_ratio": 1.0,
+      "context_length_error_rate": 0.0,
+      "tool_usage_rate": 1.0
+    }
+  },
+  "per_question": [
+    {
+      "id": "fleet_01",
+      "question": "What is the overall health status of the fleet?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_health"
+      ],
+      "actual_tools": [
+        "get_fleet_health"
+      ],
+      "tool_recall": 1.0,
+      "tool_precision": 1.0,
+      "tool_f1": 1.0,
+      "keyword_hits": 1.0,
+      "correctness": 0.9,
+      "relevance": 0.9,
+      "completeness": 0.8,
+      "hallucination_risk": 0.2,
+      "hallucination_score": 0.8,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer provides a detailed overview of the fleet's health status, including key metrics such as the number of vehicles with active and critical faults, which aligns with the expected intent and keywords. It also discusses trends and implications, which adds depth. However, it could improve by explicitly mentioning actionable steps categorized as immediate, short-term, and preventive, as requested in the reference answer. The risk of hallucination is low, as the data presented appears plausible and relevant to fleet health assessment.",
+      "latency_sec": 9.5,
+      "tokens_prompt": 3961,
+      "tokens_completion": 576,
+      "tokens_total": 4537,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "fleet_02",
+      "question": "How many vehicles are active in the fleet this month?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_health"
+      ],
+      "actual_tools": [
+        "get_fleet_health"
+      ],
+      "tool_recall": 1.0,
+      "tool_precision": 1.0,
+      "tool_f1": 1.0,
+      "keyword_hits": 1.0,
+      "correctness": 0.9,
+      "relevance": 0.9,
+      "completeness": 0.8,
+      "hallucination_risk": 0.2,
+      "hallucination_score": 0.8,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer provides a specific number of active vehicles and additional relevant statistics about the fleet, which aligns with the expected intent and keywords. However, it lacks a comprehensive diagnostic summary and actionable steps as outlined in the reference answer, which affects its completeness. The risk of hallucination is low as the figures presented seem plausible and relevant to the question.",
+      "latency_sec": 6.89,
+      "tokens_prompt": 3969,
+      "tokens_completion": 169,
+      "tokens_total": 4138,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "fleet_03",
+      "question": "What are the top DTC codes affecting the fleet right now?",
+      "expected_intent": "fleet_health",
+      "actual_intent": "fleet_health",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_dtc_distribution"
+      ],
+      "actual_tools": [
+        "get_fleet_dtc_distribution"
+      ],
+      "tool_recall": 1.0,
+      "tool_precision": 1.0,
+      "tool_f1": 1.0,
+      "keyword_hits": 1.0,
+      "correctness": 1.0,
+      "relevance": 1.0,
+      "completeness": 1.0,
+      "hallucination_risk": 0.0,
+      "hallucination_score": 1.0,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer accurately addresses the question about the top DTC codes affecting the fleet, providing specific details such as the number of vehicles affected, active vehicles, total occurrences, and episodes for each DTC code. It also includes a summary of the key takeaway and actionable next steps, aligning well with the expected intent and keywords. There is no indication of hallucination, as the information appears to be grounded in relevant fleet diagnostics.",
+      "latency_sec": 9.56,
+      "tokens_prompt": 4995,
+      "tokens_completion": 910,
+      "tokens_total": 5905,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "fleet_04",
+      "question": "Show me the fleet health trend over the past 30 days.",
+      "expected_intent": "trend_analysis",
+      "actual_intent": "trend_analysis",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_fleet_trends"
+      ],
+      "actual_tools": [
+        "get_fleet_trends"
+      ],
+      "tool_recall": 1.0,
+      "tool_precision": 1.0,
+      "tool_f1": 1.0,
+      "keyword_hits": 1.0,
+      "correctness": 0.9,
+      "relevance": 0.9,
+      "completeness": 0.8,
+      "hallucination_risk": 0.2,
+      "hallucination_score": 0.8,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer provides a detailed analysis of the fleet health trend over the past 30 days, addressing the expected keywords and intent. It includes specific data points, trends, and actionable next steps, which align well with the reference answer. However, it lacks some of the specific KPIs mentioned in the reference, such as 'vehicles impacted' and 'active vs critical faults,' which slightly affects completeness. The risk of hallucination is low as the information appears to be based on plausible fleet data.",
+      "latency_sec": 10.43,
+      "tokens_prompt": 8061,
+      "tokens_completion": 708,
+      "tokens_total": 8769,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "fleet_05",
+      "question": "Which vehicles need immediate maintenance?",
+      "expected_intent": "maintenance_prioritization",
+      "actual_intent": "maintenance_prioritization",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_maintenance_priority"
+      ],
+      "actual_tools": [
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 1.0,
+      "tool_precision": 1.0,
+      "tool_f1": 1.0,
+      "keyword_hits": 1.0,
+      "correctness": 1.0,
+      "relevance": 1.0,
+      "completeness": 1.0,
+      "hallucination_risk": 0.0,
+      "hallucination_score": 1.0,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer accurately identifies specific vehicles needing immediate maintenance based on fault activity and provides detailed information about each vehicle's issues, priority scores, and the rationale for urgency. It also includes actionable steps for maintenance, aligning well with the expected intent and keywords. There is no indication of hallucination, as the response is grounded in specific data and logical reasoning.",
+      "latency_sec": 10.09,
+      "tokens_prompt": 5248,
+      "tokens_completion": 1009,
+      "tokens_total": 6257,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "veh_01",
+      "question": "Which vehicles have the lowest health scores in the fleet?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "fleet_health",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 0.0,
+      "tool_precision": 0.0,
+      "tool_f1": 0.0,
+      "keyword_hits": 1.0,
+      "correctness": 1.0,
+      "relevance": 1.0,
+      "completeness": 1.0,
+      "hallucination_risk": 0.0,
+      "hallucination_score": 1.0,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer accurately identifies the vehicles with the lowest health scores, provides detailed information about each vehicle's issues, maintenance priorities, and active faults. It also includes a key takeaway and next steps for maintenance, aligning well with the expected intent and keywords from the reference answer.",
+      "latency_sec": 9.08,
+      "tokens_prompt": 5267,
+      "tokens_completion": 783,
+      "tokens_total": 6050,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "veh_02",
+      "question": "Show me vehicles that have had more than 5 faults this month.",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "fleet_health",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_faults"
+      ],
+      "actual_tools": [
+        "run_sql"
+      ],
+      "tool_recall": 0.0,
+      "tool_precision": 0.0,
+      "tool_f1": 0.0,
+      "keyword_hits": 1.0,
+      "correctness": 0.9,
+      "relevance": 0.9,
+      "completeness": 0.8,
+      "hallucination_risk": 0.2,
+      "hallucination_score": 0.8,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer correctly identifies vehicles with more than 5 faults this month and provides a detailed list with fault counts, which aligns with the user's request. It also includes a summary and next steps for further investigation, which adds value. However, it lacks a deeper analysis of fault patterns, severity, and maintenance recommendations as suggested in the reference answer, which affects completeness. The risk of hallucination is low as the data presented appears factual and relevant.",
+      "latency_sec": 10.61,
+      "tokens_prompt": 20719,
+      "tokens_completion": 882,
+      "tokens_total": 21601,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "veh_03",
+      "question": "Which vehicles have unresolved critical faults?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "fleet_health",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_vehicle_faults",
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 0.0,
+      "tool_precision": 0.0,
+      "tool_f1": 0.0,
+      "keyword_hits": 1.0,
+      "correctness": 1.0,
+      "relevance": 1.0,
+      "completeness": 0.9,
+      "hallucination_risk": 0.1,
+      "hallucination_score": 0.9,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer correctly identifies a vehicle with unresolved critical faults and provides detailed information about the fault, including severity and action recommendations. It is relevant to the question and aligns with the expected intent. However, it could be improved by including a broader context or additional vehicles if applicable, which would enhance completeness.",
+      "latency_sec": 8.87,
+      "tokens_prompt": 10276,
+      "tokens_completion": 342,
+      "tokens_total": 10618,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "veh_04",
+      "question": "What are the recurring faults for vehicles with poor health scores?",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "fault_correlation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_vehicle_faults",
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "get_fleet_dtc_distribution",
+        "get_fleet_health",
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 0.0,
+      "tool_precision": 0.0,
+      "tool_f1": 0.0,
+      "keyword_hits": 1.0,
+      "correctness": 1.0,
+      "relevance": 1.0,
+      "completeness": 1.0,
+      "hallucination_risk": 0.0,
+      "hallucination_score": 1.0,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer accurately identifies recurring faults in vehicles with poor health scores, providing specific fault codes and detailed analysis of their implications. It addresses the expected intent and keywords effectively, offering a comprehensive overview of the issues, their causes, impacts, and recommended actions. There is no indication of hallucination, as the information is relevant and grounded in the context of vehicle diagnostics.",
+      "latency_sec": 66.31,
+      "tokens_prompt": 13733,
+      "tokens_completion": 3192,
+      "tokens_total": 16925,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [
+        "fault_analysis_empty"
+      ],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "veh_05",
+      "question": "Which vehicles are most at risk of breakdown in the next 7 days?",
+      "expected_intent": "vehicle_investigation",
+      "actual_intent": "fleet_health",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_maintenance_priority",
+        "get_vehicle_health"
+      ],
+      "actual_tools": [
+        "get_maintenance_priority"
+      ],
+      "tool_recall": 0.5,
+      "tool_precision": 1.0,
+      "tool_f1": 0.667,
+      "keyword_hits": 1.0,
+      "correctness": 1.0,
+      "relevance": 1.0,
+      "completeness": 1.0,
+      "hallucination_risk": 0.0,
+      "hallucination_score": 1.0,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer accurately identifies specific vehicles at risk of breakdown, providing detailed fault data and maintenance priorities. It addresses the question comprehensively, covering all expected keywords and intent, and offers actionable next steps, which aligns well with the reference answer's expectations.",
+      "latency_sec": 10.46,
+      "tokens_prompt": 5283,
+      "tokens_completion": 1255,
+      "tokens_total": 6538,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "dtc_01",
+      "question": "What does fault code P0300 mean and how serious is it?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_details"
+      ],
+      "actual_tools": [
+        "get_dtc_details"
+      ],
+      "tool_recall": 1.0,
+      "tool_precision": 1.0,
+      "tool_f1": 1.0,
+      "keyword_hits": 1.0,
+      "correctness": 1.0,
+      "relevance": 1.0,
+      "completeness": 1.0,
+      "hallucination_risk": 0.0,
+      "hallucination_score": 1.0,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer accurately explains the meaning of fault code P0300, detailing that it indicates a random/multiple cylinder misfire. It addresses the seriousness of the issue, potential causes, and necessary actions to take, aligning well with the expected intent and keywords. The information is relevant and complete, providing a thorough overview without introducing any inaccuracies or speculative information.",
+      "latency_sec": 22.84,
+      "tokens_prompt": 7474,
+      "tokens_completion": 2785,
+      "tokens_total": 10259,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "dtc_02",
+      "question": "How many vehicles in the fleet are affected by code P0420?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_fleet_impact"
+      ],
+      "actual_tools": [
+        "get_dtc_details",
+        "get_fleet_dtc_distribution"
+      ],
+      "tool_recall": 0.0,
+      "tool_precision": 0.0,
+      "tool_f1": 0.0,
+      "keyword_hits": 1.0,
+      "correctness": 0.6,
+      "relevance": 0.8,
+      "completeness": 0.5,
+      "hallucination_risk": 0.2,
+      "hallucination_score": 0.8,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer correctly identifies that P0420 is not present in the provided fault list, which is relevant to the question. However, it lacks a detailed explanation of the DTC P0420, its implications, and does not provide a comprehensive analysis as requested in the reference answer. The next steps suggested are somewhat helpful but do not fully address the expected intent of providing a fleet-level impact analysis.",
+      "latency_sec": 26.74,
+      "tokens_prompt": 15520,
+      "tokens_completion": 2508,
+      "tokens_total": 18028,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [
+        "fault_analysis_empty"
+      ],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "dtc_03",
+      "question": "What other fault codes typically appear together with P0300?",
+      "expected_intent": "fault_correlation",
+      "actual_intent": "fault_correlation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_cooccurrence",
+        "get_dtc_details"
+      ],
+      "actual_tools": [
+        "get_dtc_cooccurrence"
+      ],
+      "tool_recall": 0.5,
+      "tool_precision": 1.0,
+      "tool_f1": 0.667,
+      "keyword_hits": 1.0,
+      "correctness": 0.8,
+      "relevance": 0.9,
+      "completeness": 0.7,
+      "hallucination_risk": 0.2,
+      "hallucination_score": 0.8,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer correctly identifies the lack of available data to determine which fault codes typically co-occur with P0300, which is relevant to the question. It provides a structured response outlining the problem, causes, impact, and actions to take, which adds to its completeness. However, it could have included more specific information about P0300 itself and potential common fault codes based on general automotive knowledge, which would enhance completeness. The hallucination risk is low as the answer is based on the stated lack of data rather than speculative information.",
+      "latency_sec": 18.06,
+      "tokens_prompt": 6404,
+      "tokens_completion": 1562,
+      "tokens_total": 7966,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "dtc_04",
+      "question": "What is the fleet-wide impact of DTC P0171?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "dtc_investigation",
+      "intent_match": 1,
+      "expected_tools": [
+        "get_dtc_details",
+        "get_dtc_fleet_impact"
+      ],
+      "actual_tools": [
+        "get_dtc_details",
+        "get_dtc_fleet_impact"
+      ],
+      "tool_recall": 1.0,
+      "tool_precision": 1.0,
+      "tool_f1": 1.0,
+      "keyword_hits": 1.0,
+      "correctness": 0.8,
+      "relevance": 0.9,
+      "completeness": 0.85,
+      "hallucination_risk": 0.2,
+      "hallucination_score": 0.8,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer provides a thorough analysis of the fleet-wide impact of DTC P0171, addressing the expected keywords and intent. It explains the limitations due to missing data and outlines potential impacts on fleet management. However, it could be improved by including more specific corrective actions and preventive guidance as requested in the reference answer.",
+      "latency_sec": 21.54,
+      "tokens_prompt": 9086,
+      "tokens_completion": 2601,
+      "tokens_total": 11687,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [
+        "fault_analysis_empty"
+      ],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    },
+    {
+      "id": "dtc_05",
+      "question": "What are the most common powertrain fault codes in the fleet?",
+      "expected_intent": "dtc_investigation",
+      "actual_intent": "fault_correlation",
+      "intent_match": 0,
+      "expected_tools": [
+        "get_dtc_details",
+        "get_fleet_dtc_distribution"
+      ],
+      "actual_tools": [
+        "get_fleet_dtc_distribution"
+      ],
+      "tool_recall": 0.5,
+      "tool_precision": 1.0,
+      "tool_f1": 0.667,
+      "keyword_hits": 1.0,
+      "correctness": 0.9,
+      "relevance": 0.9,
+      "completeness": 0.8,
+      "hallucination_risk": 0.2,
+      "hallucination_score": 0.8,
+      "judge_mode": "llm",
+      "judge_rationale": "The predicted answer provides specific powertrain fault codes and their details, which aligns well with the question about common powertrain fault codes. It includes relevant statistics and identifies the most significant issues. However, it lacks a detailed explanation of fault meanings, subsystem impacts, and probable root causes as outlined in the reference answer. The mention of non-powertrain-related faults is relevant but slightly detracts from the focus on powertrain issues. Overall, the answer is mostly correct and relevant, with a low risk of hallucination.",
+      "latency_sec": 22.98,
+      "tokens_prompt": 11921,
+      "tokens_completion": 2868,
+      "tokens_total": 14789,
+      "nodes_executed": [
+        "detect_intent",
+        "build_context",
+        "investigate_data",
+        "analyze_faults",
+        "reason_root_cause",
+        "assess_maintenance",
+        "generate_recommendation",
+        "explain"
+      ],
+      "node_events_count": 0,
+      "node_latency_total_sec": 0,
+      "node_latency_avg_sec": 0.0,
+      "node_latency_max_sec": 0.0,
+      "node_latency_by_node": {},
+      "failure_reasons": [
+        "fault_analysis_empty"
+      ],
+      "request_id": null,
+      "version": {
+        "release_version": "",
+        "service_version": "",
+        "git_commit": "",
+        "env_name": "dev",
+        "model_name": "gpt-5.4-mini",
+        "dataset_version": "",
+        "prompt_versions": {
+          "intent": "v1",
+          "investigate": "v1",
+          "fault_analysis": "v1",
+          "root_cause": "v1",
+          "maintenance": "v1",
+          "recommendation": "v1",
+          "explain": "v1"
+        }
+      }
+    }
+  ]
+}
