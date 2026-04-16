@@ -37,7 +37,7 @@ const severityLabel = (level) => {
   return 'Low';
 };
 
-function MaintenancePage({ customerName }) {
+function MaintenancePage({ customerName, onSelectVehicle, onSelectDtc }) {
   const { data, loading } = useQuery(MAINT_QUERY, {
     variables: { limit: 30, customerName: customerName || null },
   });
@@ -69,8 +69,13 @@ function MaintenancePage({ customerName }) {
               <li className="checklist-item" key={`c-${i}`}>
                 <div className="checklist-icon" style={{ background: '#fee2e2', color: '#dc2626' }}>!</div>
                 <div className="checklist-text">
-                  <strong>{m.dtcCode} · {m.subsystem || 'General'}</strong>
-                  <span>Vehicle {m.uniqueid} · {m.recommendation}</span>
+                  <strong>
+                    <button type="button" className="link-button" onClick={() => onSelectDtc && onSelectDtc(m.dtcCode)}>{m.dtcCode}</button>
+                    {' '}· {m.subsystem || 'General'}
+                  </strong>
+                  <span>
+                    Vehicle <button type="button" className="link-button" onClick={() => onSelectVehicle && onSelectVehicle(m.uniqueid)}>{m.uniqueid}</button> · {m.recommendation}
+                  </span>
                 </div>
                 <span className="badge badge-critical" style={{ marginLeft: 'auto', flexShrink: 0 }}>{severityLabel(m.severityLevel)}</span>
               </li>
@@ -87,8 +92,13 @@ function MaintenancePage({ customerName }) {
               <li className="checklist-item" key={`m-${i}`}>
                 <div className="checklist-icon" style={{ background: '#fef3c7', color: '#d97706' }}>◆</div>
                 <div className="checklist-text">
-                  <strong>{m.dtcCode} · {m.subsystem || 'General'}</strong>
-                  <span>Vehicle {m.uniqueid} · {m.recommendation}</span>
+                  <strong>
+                    <button type="button" className="link-button" onClick={() => onSelectDtc && onSelectDtc(m.dtcCode)}>{m.dtcCode}</button>
+                    {' '}· {m.subsystem || 'General'}
+                  </strong>
+                  <span>
+                    Vehicle <button type="button" className="link-button" onClick={() => onSelectVehicle && onSelectVehicle(m.uniqueid)}>{m.uniqueid}</button> · {m.recommendation}
+                  </span>
                 </div>
                 <span className="badge badge-moderate" style={{ marginLeft: 'auto', flexShrink: 0 }}>{severityLabel(m.severityLevel)}</span>
               </li>
@@ -105,8 +115,13 @@ function MaintenancePage({ customerName }) {
               <li className="checklist-item" key={`l-${i}`}>
                 <div className="checklist-icon" style={{ background: '#dbeafe', color: '#3b82f6' }}>✓</div>
                 <div className="checklist-text">
-                  <strong>{m.dtcCode} · {m.subsystem || 'General'}</strong>
-                  <span>Vehicle {m.uniqueid} · {m.recommendation}</span>
+                  <strong>
+                    <button type="button" className="link-button" onClick={() => onSelectDtc && onSelectDtc(m.dtcCode)}>{m.dtcCode}</button>
+                    {' '}· {m.subsystem || 'General'}
+                  </strong>
+                  <span>
+                    Vehicle <button type="button" className="link-button" onClick={() => onSelectVehicle && onSelectVehicle(m.uniqueid)}>{m.uniqueid}</button> · {m.recommendation}
+                  </span>
                 </div>
                 <span className="badge badge-minor" style={{ marginLeft: 'auto', flexShrink: 0 }}>{severityLabel(m.severityLevel)}</span>
               </li>
@@ -150,6 +165,13 @@ function MaintenancePage({ customerName }) {
             { key: 'recommendedAction', label: 'Action', render: (v) => v || '—' },
           ]}
           rows={enhanced}
+          onRowClick={(row) => onSelectVehicle && onSelectVehicle(row.uniqueid)}
+          onCellClick={({ event, column, row }) => {
+            if (column.key === 'dtcCode') {
+              event.stopPropagation();
+              onSelectDtc && onSelectDtc(row.dtcCode);
+            }
+          }}
         />
       )}
     </div>

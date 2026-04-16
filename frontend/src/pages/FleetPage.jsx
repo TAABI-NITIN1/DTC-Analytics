@@ -103,7 +103,7 @@ const healthLabel = (score) => {
   return 'Poor';
 };
 
-function FleetPage({ days, customerName }) {
+function FleetPage({ days, customerName, onSelectVehicle, onSelectDtc }) {
   const { data, loading } = useQuery(FLEET_QUERY, {
     variables: { days, limit: 10, customerName: customerName || null },
   });
@@ -222,20 +222,26 @@ function FleetPage({ days, customerName }) {
             },
           ]}
           rows={topRisk}
+          onRowClick={(row) => onSelectVehicle && onSelectVehicle(row.uniqueid)}
         />
 
         <div className="card">
           <h3>Top Problematic DTC Codes</h3>
           <div className="hbar-list">
             {topDtc.map((d) => (
-              <div className="hbar-row" key={d.dtcCode}>
+              <button
+                type="button"
+                className="hbar-row hbar-row-button"
+                key={d.dtcCode}
+                onClick={() => onSelectDtc && onSelectDtc(d.dtcCode)}
+              >
                 <span className="hbar-label">{d.dtcCode}</span>
                 <span className="hbar-desc">{d.description}</span>
                 <div className="hbar-track">
                   <div className="hbar-fill" style={{ width: `${(d.occurrences / maxOcc) * 100}%`, background: 'linear-gradient(90deg, #3b82f6, #1e40af)' }} />
                 </div>
                 <span className="hbar-count">{d.occurrences}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>

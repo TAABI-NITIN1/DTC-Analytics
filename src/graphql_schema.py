@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+import math
 from typing import List, Optional
 
 import strawberry
@@ -16,6 +17,21 @@ def _query_rows(sql: str, params: dict | None = None):
     client = get_clickhouse_client()
     result = client.execute(sql, params or {})
     return result
+
+
+def _safe_float(value, default: float = 0.0) -> float:
+    """Convert DB numeric values to GraphQL-safe finite floats."""
+    try:
+        parsed = float(value)
+    except Exception:
+        return default
+    if not math.isfinite(parsed):
+        return default
+    return parsed
+
+
+def _safe_round(value, ndigits: int, default: float = 0.0) -> float:
+    return round(_safe_float(value, default=default), ndigits)
 
 
 def _table_exists(table_name: str) -> bool:
@@ -139,6 +155,46 @@ class DtcVehicle:
     episode_count: int
     active_episodes: int
     max_severity: int
+
+
+@strawberry.type
+class SelectedDtcKpis:
+    dtc_code: str
+    system: str
+    subsystem: str
+    affected_vehicles: int
+    active_episodes: int
+    critical_episodes: int
+    avg_resolution_days: float
+    driver_related_ratio: float
+    last_seen_date: str
+
+
+@strawberry.type
+class SelectedDtcWeeklyTrendPoint:
+    week_start: str
+    occurrences: int
+    affected_vehicles: int
+    active_episodes: int
+    critical_episodes: int
+
+
+@strawberry.type
+class SelectedDtcCooccurrence:
+    co_dtc_code: str
+    cooccurrence_count: int
+    vehicles_affected: int
+
+
+@strawberry.type
+class SelectedDtcVehicle:
+    uniqueid: str
+    vehicle_number: str
+    episode_count: int
+    active_episodes: int
+    max_severity: int
+    last_reported_date: str
+    health_score: float
 
 
 @strawberry.type
@@ -378,7 +434,7 @@ class Query:
         total_v = int(snap[0][0]) if snap else 0
         active_v = int(snap[0][1]) if snap else 0
         crit_v = int(snap[0][2]) if snap else 0
-        health = float(snap[0][3] or 0) if snap else 0.0
+        health = _safe_float(snap[0][3] if snap else 0.0)
 
         # Average resolution days (resolved episodes)
         p3: dict = {'days': int(days)}
@@ -394,7 +450,7 @@ class Query:
             ''',
             p3,
         )
-        avg_res = float(res_rows[0][0] or 0) if res_rows else 0.0
+        avg_res = _safe_float(res_rows[0][0] if res_rows else 0.0)
 
         # Maintenance due
         p4: dict = {}
@@ -479,7 +535,7 @@ class Query:
             total_vehicles=int(total_v),
             active_fault_vehicles=int(active_v or 0),
             critical_fault_vehicles=int(crit_v or 0),
-            fleet_health_score=float(score or 0.0),
+            fleet_health_score=_safe_float(score),
         )
 
     @strawberry.field
@@ -509,7 +565,7 @@ class Query:
                 event_date=str(event_date),
                 active_fault_vehicles=int(active or 0),
                 critical_fault_vehicles=int(critical or 0),
-                fleet_health_score=float(score or 0.0),
+                fleet_health_score=_safe_float(score),
             )
             for event_date, active, critical, score in rows
         ]
@@ -555,7 +611,7 @@ class Query:
                 vehicle_number=str(vn or ''),
                 vehicle_model=str(vm_val or ''),
                 customer_name=str(cn_val or ''),
-                health_score=float(hs or 0.0),
+                health_score=_safe_float(hs),
                 active_fault_count=int(afc),
                 critical_fault_count=int(cfc),
                 longest_active_days=int(lad),
@@ -592,7 +648,7 @@ class Query:
                 dtc_code=str(code),
                 occurrences=int(occurrences),
                 vehicles_affected=int(vehicles_affected),
-                avg_persistence=float(avg_persistence or 0.0),
+                avg_persistence=_safe_float(avg_persistence),
             )
             for code, occurrences, vehicles_affected, avg_persistence in rows
         ]
@@ -750,6 +806,171 @@ class Query:
         ]
 
     @strawberry.field
+    def selected_dtc_kpis(self, dtc_code: str, days: int = 30, customer_name: Optional[str] = None) -> SelectedDtcKpis | None:
+        """Single selected DTC KPI snapshot scoped to customer if provided."""
+        vfm = V2_TABLES['vehicle_fault_master']
+        p: dict = {'dtc_code': dtc_code, 'days': int(days)}
+        c = _customer_and(customer_name or None, p)
+        rows = _query_rows(
+            f'''
+            SELECT
+                anyLast(system) AS system,
+                anyLast(subsystem) AS subsystem,
+                uniqExact(uniqueid) AS affected_vehicles,
+                countIf(is_resolved = 0) AS active_episodes,
+                countIf(is_resolved = 0 AND severity_level >= 3) AS critical_episodes,
+                avgIf(resolution_time_sec / 86400.0, is_resolved = 1 AND resolution_time_sec > 0) AS avg_resolution_days,
+                if(count() > 0, countIf(driver_related = 1) / count(), 0.0) AS driver_related_ratio,
+                max(event_date) AS last_seen_date
+            FROM {vfm}
+            WHERE dtc_code = %(dtc_code)s
+              AND event_date >= today() - %(days)s
+              {c}
+            ''',
+            p,
+        )
+        if not rows:
+            return None
+        r = rows[0]
+        if int(r[2] or 0) <= 0:
+            return None
+        return SelectedDtcKpis(
+            dtc_code=str(dtc_code),
+            system=str(r[0] or ''),
+            subsystem=str(r[1] or ''),
+            affected_vehicles=int(r[2] or 0),
+            active_episodes=int(r[3] or 0),
+            critical_episodes=int(r[4] or 0),
+            avg_resolution_days=_safe_round(r[5], 1),
+            driver_related_ratio=_safe_round(r[6], 3),
+            last_seen_date=str(r[7] or ''),
+        )
+
+    @strawberry.field
+    def selected_dtc_weekly_trend(self, dtc_code: str, days: int = 56, customer_name: Optional[str] = None) -> list[SelectedDtcWeeklyTrendPoint]:
+        """Weekly trend for the selected DTC code."""
+        vfm = V2_TABLES['vehicle_fault_master']
+        p: dict = {'dtc_code': dtc_code, 'days': int(days)}
+        c = _customer_and(customer_name or None, p)
+        rows = _query_rows(
+            f'''
+            SELECT
+                toStartOfWeek(event_date, 1) AS week_start,
+                sum(occurrence_count) AS occurrences,
+                uniqExact(uniqueid) AS affected_vehicles,
+                countIf(is_resolved = 0) AS active_episodes,
+                countIf(is_resolved = 0 AND severity_level >= 3) AS critical_episodes
+            FROM {vfm}
+            WHERE dtc_code = %(dtc_code)s
+              AND event_date >= today() - %(days)s
+              {c}
+            GROUP BY week_start
+            ORDER BY week_start
+            ''',
+            p,
+        )
+        return [
+            SelectedDtcWeeklyTrendPoint(
+                week_start=str(ws),
+                occurrences=int(occ or 0),
+                affected_vehicles=int(va or 0),
+                active_episodes=int(ae or 0),
+                critical_episodes=int(ce or 0),
+            )
+            for ws, occ, va, ae, ce in rows
+        ]
+
+    @strawberry.field
+    def selected_dtc_cooccurrence(self, dtc_code: str, days: int = 30, limit: int = 10, customer_name: Optional[str] = None) -> list[SelectedDtcCooccurrence]:
+        """Top co-occurring DTC codes with selected DTC."""
+        vfm = V2_TABLES['vehicle_fault_master']
+        p: dict = {'dtc_code': dtc_code, 'days': int(days), 'limit': int(limit)}
+        customer_clause_target = ''
+        customer_clause_other = ''
+        if customer_name:
+            p['_cust'] = customer_name
+            customer_clause_target = 'AND customer_name = %(_cust)s'
+            customer_clause_other = 'AND other.customer_name = %(_cust)s'
+
+        rows = _query_rows(
+            f'''
+            WITH target_vehicles AS (
+                SELECT DISTINCT uniqueid
+                FROM {vfm}
+                WHERE dtc_code = %(dtc_code)s
+                  AND event_date >= today() - %(days)s
+                  {customer_clause_target}
+            )
+            SELECT
+                other.dtc_code AS co_dtc_code,
+                count() AS cooccurrence_count,
+                uniqExact(other.uniqueid) AS vehicles_affected
+            FROM {vfm} AS other
+            INNER JOIN target_vehicles tv ON other.uniqueid = tv.uniqueid
+            WHERE other.dtc_code != %(dtc_code)s
+              AND other.event_date >= today() - %(days)s
+              {customer_clause_other}
+            GROUP BY co_dtc_code
+            ORDER BY vehicles_affected DESC, cooccurrence_count DESC
+            LIMIT %(limit)s
+            ''',
+            p,
+        )
+        return [
+            SelectedDtcCooccurrence(
+                co_dtc_code=str(code),
+                cooccurrence_count=int(cnt or 0),
+                vehicles_affected=int(va or 0),
+            )
+            for code, cnt, va in rows
+        ]
+
+    @strawberry.field
+    def selected_dtc_vehicles(self, dtc_code: str, days: int = 90, limit: int = 100, customer_name: Optional[str] = None) -> list[SelectedDtcVehicle]:
+        """Vehicles affected by selected DTC with severity and recency metrics."""
+        vfm = V2_TABLES['vehicle_fault_master']
+        vhs = V2_TABLES['vehicle_health_summary']
+        p: dict = {'dtc_code': dtc_code, 'days': int(days), 'limit': int(limit)}
+        customer_clause = ''
+        if customer_name:
+            p['_cust'] = customer_name
+            customer_clause = 'AND f.customer_name = %(_cust)s'
+
+        rows = _query_rows(
+            f'''
+            SELECT
+                f.uniqueid,
+                anyLast(f.vehicle_number) AS vehicle_number,
+                count() AS episode_count,
+                countIf(f.is_resolved = 0) AS active_episodes,
+                max(f.severity_level) AS max_severity,
+                max(f.event_date) AS last_reported_date,
+                anyLast(v.vehicle_health_score) AS health_score
+            FROM {vfm} f
+            LEFT JOIN {vhs} v ON v.uniqueid = f.uniqueid
+            WHERE f.dtc_code = %(dtc_code)s
+              AND f.event_date >= today() - %(days)s
+              {customer_clause}
+            GROUP BY f.uniqueid
+            ORDER BY active_episodes DESC, max_severity DESC, episode_count DESC
+            LIMIT %(limit)s
+            ''',
+            p,
+        )
+        return [
+            SelectedDtcVehicle(
+                uniqueid=str(uid),
+                vehicle_number=str(vn or uid),
+                episode_count=int(ec or 0),
+                active_episodes=int(ae or 0),
+                max_severity=int(ms or 0),
+                last_reported_date=str(lrd or ''),
+                health_score=_safe_round(hs, 1),
+            )
+            for uid, vn, ec, ae, ms, lrd, hs in rows
+        ]
+
+    @strawberry.field
     def vehicles_with_dtcs(self, limit: int = 50, customer_name: Optional[str] = None) -> list[VehicleWithDtcs]:
         """Vehicles with their active DTC code lists."""
         vhs = V2_TABLES['vehicle_health_summary']
@@ -830,7 +1051,7 @@ class Query:
             vehicle_model=str(vehicle_model or ''),
             vehicle_type=str(vehicle_type or ''),
             customer_name=str(cust_name or ''),
-            health_score=float(health_score or 0.0),
+            health_score=_safe_float(health_score),
             active_fault_count=int(active_fault_count),
             critical_fault_count=int(critical_fault_count),
         )
@@ -926,7 +1147,7 @@ class Query:
                 vehicle_count=int(vehicle_count),
                 active_fault_vehicles=int(active_fault_vehicles),
                 critical_fault_vehicles=int(critical_fault_vehicles),
-                avg_health_score=float(avg_health_score or 0.0),
+                avg_health_score=_safe_float(avg_health_score),
             )
             for customer_name, vehicle_count, active_fault_vehicles, critical_fault_vehicles, avg_health_score in rows
         ]
@@ -1008,7 +1229,7 @@ class Query:
             vehicles_with_active_faults=int(r[1]),
             vehicles_with_critical_faults=int(r[2]),
             driver_related_faults=int(r[3]),
-            fleet_health_score=round(float(r[4] or 0), 2),
+            fleet_health_score=_safe_round(r[4], 2),
             most_common_dtc=str(r[5] or ''),
             most_common_system=str(r[6] or ''),
             active_fault_trend=str(r[7] or 'stable'),
@@ -1043,7 +1264,7 @@ class Query:
                 vehicles_affected=int(va),
                 active_faults=int(af),
                 critical_faults=int(cf),
-                risk_score=round(float(rs or 0), 2),
+                risk_score=_safe_round(rs, 2),
                 trend=str(t or 'stable'),
             )
             for s, va, af, cf, rs, t in rows
@@ -1080,7 +1301,7 @@ class Query:
                 new_faults=int(nf),
                 resolved_faults=int(rf),
                 driver_related_faults=int(drf),
-                fleet_health_score=round(float(fhs or 0), 2),
+                fleet_health_score=_safe_round(fhs, 2),
             )
             for d, af, nf, rf, drf, fhs in rows
         ]
@@ -1114,9 +1335,9 @@ class Query:
                 subsystem=str(ss or ''),
                 vehicles_affected=int(va),
                 active_vehicles=int(av),
-                avg_resolution_time=round(float(art or 0), 1),
-                driver_related_ratio=round(float(drr or 0), 3),
-                fleet_risk_score=round(float(frs or 0), 2),
+                avg_resolution_time=_safe_round(art, 1),
+                driver_related_ratio=_safe_round(drr, 3),
+                fleet_risk_score=_safe_round(frs, 2),
             )
             for dc, s, ss, va, av, art, drr, frs in rows
         ]
@@ -1146,7 +1367,7 @@ class Query:
                 dtc_code_b=str(b),
                 cooccurrence_count=int(cc),
                 vehicles_affected=int(va),
-                avg_time_gap_sec=round(float(atg or 0), 1),
+                avg_time_gap_sec=_safe_round(atg, 1),
             )
             for a, b, cc, va, atg in rows
         ]
@@ -1184,7 +1405,7 @@ class Query:
             fuel_mileage_impact=str(r[8] or ''),
             action_required=str(r[9] or ''),
             repair_complexity=str(r[10] or ''),
-            estimated_repair_hours=float(r[11] or 0),
+            estimated_repair_hours=_safe_float(r[11]),
             driver_related=bool(r[12]),
             driver_behaviour_category=str(r[13] or ''),
             recommended_preventive_action=str(r[14] or ''),
@@ -1215,12 +1436,12 @@ class Query:
             uniqueid=str(r[0]),
             vehicle_number=str(r[1] or ''),
             customer_name=str(r[2] or ''),
-            vehicle_health_score=float(r[3] or 0),
+            vehicle_health_score=_safe_float(r[3]),
             active_fault_count=int(r[4]),
             critical_fault_count=int(r[5]),
             total_episodes=int(r[6]),
             episodes_last_30_days=int(r[7]),
-            avg_resolution_time=round(float(r[8] or 0), 1),
+            avg_resolution_time=_safe_round(r[8], 1),
             driver_related_faults=int(r[9]),
             most_common_dtc=str(r[10] or ''),
             has_engine_issue=bool(r[11]),
@@ -1269,7 +1490,7 @@ class Query:
                 severity_level=int(sv),
                 fault_duration_sec=int(fds),
                 episodes_last_30_days=int(e30),
-                maintenance_priority_score=round(float(mps or 0), 1),
+                maintenance_priority_score=_safe_round(mps, 1),
                 recommended_action=str(ra) if ra else 'Schedule preventive maintenance.',
             )
             for uid, vn, dc, desc, sv, fds, e30, mps, ra in rows

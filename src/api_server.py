@@ -4,14 +4,25 @@ import httpx
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi import HTTPException
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.requests import ClientDisconnect
 from strawberry.fastapi import GraphQLRouter
 from pydantic import BaseModel
 
 from src.config import load_env
 from src.clickhouse_utils import get_clickhouse_client, ensure_tables
+from src.conversation_store import (
+    append_conversation_message,
+    ensure_conversation,
+    ensure_conversation_tables,
+    get_recent_conversation_messages,
+    validate_conversation_customer_scope,
+)
 from src.graphql_schema import schema as graphql_schema
 
 # -------------------------------
@@ -31,6 +42,13 @@ UI_ROOT = PROJECT_ROOT / 'ui'
 # App
 # -------------------------------
 app = FastAPI(title='DTC Analytics API')
+CONVERSATION_CONTEXT_WINDOW = 12
+
+
+@app.exception_handler(ClientDisconnect)
+async def handle_client_disconnect(request: Request, exc: ClientDisconnect):
+    logging.debug("Client disconnected before request completed: %s %s", request.method, request.url.path)
+    return Response(status_code=499)
 
 # -------------------------------
 # CORS (production safe)
@@ -52,6 +70,10 @@ app.add_middleware(
 # -------------------------------
 if UI_ROOT.exists():
     app.mount('/static', StaticFiles(directory=UI_ROOT), name='static')
+    assets_dir = UI_ROOT / 'assets'
+    if assets_dir.exists():
+        # Built Vite index.html references /assets/* directly.
+        app.mount('/assets', StaticFiles(directory=assets_dir), name='assets')
 
 # -------------------------------
 # GraphQL (keep UI OFF in prod)
@@ -68,6 +90,7 @@ def _init_db():
     try:
         client = get_clickhouse_client()
         ensure_tables(client)
+        ensure_conversation_tables()
         logging.info("✅ ClickHouse ready")
     except Exception as e:
         logging.error(f"❌ DB error: {e}")
@@ -119,6 +142,10 @@ async def _log_to_dify(query, answer, context):
 async def ai_chat(req: ChatRequest):
     from src.ai_analyst import chat as chat_fn
 
+    context = req.context or {}
+    customer_name = str(context.get('customer_name') or '').strip()
+    mode = str(context.get('mode') or 'general').strip() or 'general'
+
     query_text = req.query or ""
     if not query_text and req.messages:
         msgs = [m for m in req.messages if m.get("role") == "user"]
@@ -128,10 +155,88 @@ async def ai_chat(req: ChatRequest):
     if not query_text:
         return {"text": "No query provided.", "chart": None}
 
+    conversation_id = str(req.conversation_id or '').strip()
+    try:
+        if conversation_id:
+            validate_conversation_customer_scope(conversation_id, customer_name)
+        conversation_id = ensure_conversation(
+            conversation_id=conversation_id,
+            customer_name=customer_name,
+            mode=mode,
+            context=context,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except Exception as exc:
+        logging.warning('Conversation setup failed, continuing without persistence: %s', exc)
+        conversation_id = ''
+
+    history_rows = []
+    if conversation_id:
+        try:
+            history_rows = get_recent_conversation_messages(conversation_id, limit=CONVERSATION_CONTEXT_WINDOW)
+        except Exception as exc:
+            logging.warning('Conversation history read failed: %s', exc)
+            history_rows = []
+
+    messages_for_ai = [
+        {
+            'role': str(row.get('role') or ''),
+            'content': str(row.get('content') or ''),
+        }
+        for row in history_rows
+        if str(row.get('role') or '') in {'user', 'assistant'}
+    ]
+
+    if not messages_for_ai and req.messages:
+        recent_request_messages = req.messages[-CONVERSATION_CONTEXT_WINDOW:]
+        messages_for_ai = [
+            {
+                'role': str(message.get('role') or ''),
+                'content': str(message.get('content') or ''),
+            }
+            for message in recent_request_messages
+            if str(message.get('role') or '') in {'user', 'assistant'}
+        ]
+
+    if not messages_for_ai or messages_for_ai[-1].get('role') != 'user' or messages_for_ai[-1].get('content') != query_text:
+        messages_for_ai.append({'role': 'user', 'content': query_text})
+
     result = chat_fn(
-        messages=[{"role": "user", "content": query_text}],
-        context=req.context or {}
+        messages=messages_for_ai,
+        context=context,
     )
+
+    if conversation_id:
+        request_id = str(result.get('request_id') or '')
+        intent = str(result.get('intent') or '')
+        try:
+            append_conversation_message(
+                conversation_id=conversation_id,
+                role='user',
+                content=query_text,
+                request_id=request_id,
+                intent=intent,
+                metadata={'mode': mode, 'customer_name': customer_name},
+            )
+            append_conversation_message(
+                conversation_id=conversation_id,
+                role='assistant',
+                content=str(result.get('text') or ''),
+                request_id=request_id,
+                intent=intent,
+                metadata={
+                    'mode': mode,
+                    'customer_name': customer_name,
+                    'chart_present': bool(result.get('chart')),
+                    'token_usage': result.get('token_usage') or {},
+                    'failure_reasons': result.get('failure_reasons') or [],
+                },
+            )
+        except Exception as exc:
+            logging.warning('Conversation persistence failed: %s', exc)
+
+    result['conversation_id'] = conversation_id
 
     asyncio.create_task(
         _log_to_dify(query_text, result.get("text", ""), req.context)
@@ -145,6 +250,13 @@ async def ai_chat(req: ChatRequest):
 @app.get('/')
 def index():
     return FileResponse(UI_ROOT / 'index.html')
+
+@app.get('/favicon.ico')
+def favicon():
+    favicon_path = UI_ROOT / 'favicon.ico'
+    if favicon_path.exists():
+        return FileResponse(favicon_path)
+    raise HTTPException(status_code=404, detail='Not Found')
 
 @app.get('/health')
 def health():

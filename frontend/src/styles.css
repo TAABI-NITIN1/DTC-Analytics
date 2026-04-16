@@ -137,6 +137,62 @@ body { margin: 0; background: var(--bg); }
   box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
 }
 
+.typeahead-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  min-width: 280px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  z-index: 50;
+}
+
+.typeahead-option {
+  width: 100%;
+  border: 0;
+  background: #fff;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.typeahead-option:last-child {
+  border-bottom: 0;
+}
+
+.typeahead-option:hover,
+.typeahead-option.active {
+  background: #eff6ff;
+}
+
+.typeahead-primary {
+  font-size: 13px;
+  color: var(--heading);
+  font-weight: 600;
+}
+
+.typeahead-secondary {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+.typeahead-empty {
+  padding: 11px 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .btn-apply {
   background: var(--primary);
   color: #fff;
@@ -500,6 +556,19 @@ tbody tr:hover {
   gap: 10px;
 }
 
+.hbar-row-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.hbar-row-button:hover .hbar-label {
+  color: var(--primary);
+}
+
 .hbar-label {
   min-width: 70px;
   font-size: 12px;
@@ -651,6 +720,28 @@ tbody tr:hover {
 
 .clickable-row:hover {
   background: #eff6ff !important;
+}
+
+.clickable-cell {
+  cursor: default;
+}
+
+.link-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: #bfdbfe;
+  text-underline-offset: 2px;
+}
+
+.link-button:hover {
+  color: var(--primary);
+  text-decoration-color: var(--primary-light);
 }
 
 /* ── Disabled Nav Items ────────────────────────────────────── */

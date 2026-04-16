@@ -77,7 +77,7 @@ const healthBg = (score) => {
   return '#fee2e2';
 };
 
-function VehiclePage({ uniqueid, days, customerName }) {
+function VehiclePage({ uniqueid, days, customerName, onSelectDtc }) {
   const effectiveUniqueid = uniqueid || 'UNKNOWN';
   const { data, loading } = useQuery(VEHICLE_QUERY, {
     variables: { uniqueid: effectiveUniqueid, days, customerName: customerName || null },
@@ -181,7 +181,18 @@ function VehiclePage({ uniqueid, days, customerName }) {
       <DataTable
         title="Top Problematic DTC Codes"
         columns={[
-          { key: 'dtcCode', label: 'DTC Code' },
+          {
+            key: 'dtcCode',
+            label: 'DTC Code',
+            render: (value) => (
+              <button type="button" className="link-button" onClick={(event) => {
+                event.stopPropagation();
+                onSelectDtc && onSelectDtc(value);
+              }}>
+                <span className="dtc-pill minor">{value}</span>
+              </button>
+            ),
+          },
           { key: 'episodeCount', label: 'Total Episodes' },
           { key: 'activeEpisodes', label: 'Active' },
           {
@@ -221,7 +232,12 @@ function VehiclePage({ uniqueid, days, customerName }) {
               <li className="checklist-item" key={i}>
                 <div className="checklist-icon" style={{ background: bg, color }}>{f.maxSeverity >= 3 ? '!' : '✓'}</div>
                 <div className="checklist-text">
-                  <strong>{f.dtcCode} — {f.activeEpisodes} active episode{f.activeEpisodes > 1 ? 's' : ''}</strong>
+                  <strong>
+                    <button type="button" className="link-button" onClick={() => onSelectDtc && onSelectDtc(f.dtcCode)}>
+                      {f.dtcCode}
+                    </button>
+                    {' '}— {f.activeEpisodes} active episode{f.activeEpisodes > 1 ? 's' : ''}
+                  </strong>
                   <span>Persisting for {f.daysPersistence} days · Severity: {severityLabel(f.maxSeverity)}{f.maxSeverity >= 3 ? ' — Schedule service immediately' : ' — Monitor and plan maintenance'}</span>
                 </div>
               </li>

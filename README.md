@@ -98,3 +98,71 @@ Run semantic LLM-judge scoring (costly but richer):
 - `EVAL_USE_LLM_JUDGE=1`
 - Optional: `EVAL_JUDGE_MODEL=gpt-4o-mini`
 - `python evaluation/run_evaluation.py`
+
+## LangGraph Studio (local graph debugging)
+
+This repository now includes `langgraph.json` configured for the AI analyst graph:
+
+- Graph id: `ai_analyst`
+- Graph entrypoint: `src/ai_analyst.py:agent_graph`
+
+### Run locally (PowerShell)
+
+```powershell
+cd c:\Users\Client\Downloads\DTC_Analytics_Local
+.\myvenv\Scripts\Activate.ps1
+pip install "langgraph-cli[inmem]"
+langgraph dev
+```
+
+Then open the Studio URL shown in terminal to inspect node execution, state transitions,
+and routing in the graph while keeping ClickHouse + Streamlit observability for production analytics.
+
+## Automatic LangSmith -> ClickHouse Sync
+
+To continuously mirror LangSmith root traces into ClickHouse observability tables,
+run the sync worker.
+
+### Environment variables
+
+- `LANGSMITH_SYNC_ENABLED=1`
+- `LANGSMITH_SYNC_INTERVAL_SEC=120`
+- `LANGSMITH_SYNC_LIMIT=200`
+- `LANGSMITH_SYNC_LOOKBACK_DAYS=14`
+- `LANGSMITH_SYNC_USE_CHECKPOINT=1`
+- `LANGSMITH_SYNC_PIPELINE_KEY=langsmith_root_runs`
+- `LANGSMITH_SYNC_SAFETY_LOOKBACK_MINUTES=5`
+- Optional: `LANGSMITH_SYNC_PROJECT=AI for Vehicle Health`
+	- If empty, worker uses `LANGCHAIN_PROJECT` or `LANGSMITH_PROJECT`.
+
+### Local run (PowerShell)
+
+```powershell
+cd c:\Users\Client\Downloads\DTC_Analytics_Local
+.\myvenv\Scripts\Activate.ps1
+python run_langsmith_sync_worker.py
+```
+
+### Docker Compose
+
+The compose stack now includes service `langsmith-sync-worker`.
+
+```powershell
+docker compose up -d langsmith-sync-worker
+docker logs -f langsmith-sync-worker
+```
+
+This service periodically pulls LangSmith root runs and persists them into:
+
+- `ai_obs_requests`
+- `ai_obs_nodes`
+- `ai_obs_sql_events`
+- `ai_obs_node_scores`
+- `ai_obs_prompt_scores`
+- `ai_obs_sql_planner_events`
+
+### Incremental checkpoint behavior
+
+When `LANGSMITH_SYNC_USE_CHECKPOINT=1`, sync stores and reuses a watermark in table
+`ai_obs_sync_state` and only imports runs newer than the last successful sync,
+with a small safety overlap controlled by `LANGSMITH_SYNC_SAFETY_LOOKBACK_MINUTES`.

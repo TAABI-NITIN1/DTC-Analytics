@@ -221,10 +221,13 @@ export default function ChatWidget({ pageContext }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [conversationId, setConversationId] = useState('');
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const previousCustomerScopeRef = useRef(((pageContext?.customer_name) || '').trim().toLowerCase());
 
   const mode = pageContext?.mode || 'default';
+  const customerScope = ((pageContext?.customer_name) || '').trim().toLowerCase();
   const suggestions = MODE_SUGGESTIONS[mode] || MODE_SUGGESTIONS.default;
 
   useEffect(() => {
@@ -234,6 +237,15 @@ export default function ChatWidget({ pageContext }) {
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  useEffect(() => {
+    if (previousCustomerScopeRef.current !== customerScope) {
+      setMessages([]);
+      setConversationId('');
+      setInput('');
+    }
+    previousCustomerScopeRef.current = customerScope;
+  }, [customerScope]);
 
   const sendMessage = async (overrideText) => {
     const text = (overrideText || input).trim();
@@ -248,6 +260,9 @@ export default function ChatWidget({ pageContext }) {
     try {
       const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }));
       const body = { messages: apiMessages };
+      if (conversationId) {
+        body.conversation_id = conversationId;
+      }
       // Attach page context if available
       if (pageContext) {
         body.context = pageContext;
@@ -263,6 +278,9 @@ export default function ChatWidget({ pageContext }) {
       }
 
       const data = await res.json();
+      if (data?.conversation_id) {
+        setConversationId(String(data.conversation_id));
+      }
       const assistantMsg = {
         role: 'assistant',
         content: data.text || 'No response.',
@@ -286,7 +304,10 @@ export default function ChatWidget({ pageContext }) {
     }
   };
 
-  const clearChat = () => setMessages([]);
+  const clearChat = () => {
+    setMessages([]);
+    setConversationId('');
+  };
 
   const modeLabel = mode === 'vehicle' ? '🚛 Vehicle Mode'
     : mode === 'dtc' ? '🔧 DTC Mode'

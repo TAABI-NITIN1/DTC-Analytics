@@ -1,6 +1,8 @@
 import { gql, useQuery } from '@apollo/client';
 import {
   ResponsiveContainer,
+  AreaChart,
+  Area,
   PieChart,
   Pie,
   Cell,
@@ -17,7 +19,7 @@ import {
 import KpiCard from '../components/KpiCard';
 import DataTable from '../components/DataTable';
 
-const DTC_QUERY = gql`
+const DTC_FLEET_QUERY = gql`
   query DtcDashboard($days: Int!, $limit: Int!, $customerName: String) {
     fleetKpis(days: $days, customerName: $customerName) {
       totalVehicles
@@ -78,6 +80,54 @@ const DTC_QUERY = gql`
   }
 `;
 
+const DTC_SELECTED_QUERY = gql`
+  query SelectedDtcDashboard($dtcCode: String!, $days: Int!, $limit: Int!, $customerName: String) {
+    selectedDtcKpis(dtcCode: $dtcCode, days: $days, customerName: $customerName) {
+      dtcCode
+      system
+      subsystem
+      affectedVehicles
+      activeEpisodes
+      criticalEpisodes
+      avgResolutionDays
+      driverRelatedRatio
+      lastSeenDate
+    }
+    selectedDtcWeeklyTrend(dtcCode: $dtcCode, days: $days, customerName: $customerName) {
+      weekStart
+      occurrences
+      affectedVehicles
+      activeEpisodes
+      criticalEpisodes
+    }
+    selectedDtcCooccurrence(dtcCode: $dtcCode, days: $days, limit: $limit, customerName: $customerName) {
+      coDtcCode
+      cooccurrenceCount
+      vehiclesAffected
+    }
+    selectedDtcVehicles(dtcCode: $dtcCode, days: $days, limit: 100, customerName: $customerName) {
+      uniqueid
+      vehicleNumber
+      episodeCount
+      activeEpisodes
+      lastReportedDate
+      healthScore
+    }
+    dtcDetail(dtcCode: $dtcCode) {
+      dtcCode
+      system
+      subsystem
+      description
+      severityLevel
+      primaryCause
+      symptoms
+      impactIfUnresolved
+      actionRequired
+      recommendedPreventiveAction
+    }
+  }
+`;
+
 const SEVERITY_COLORS = {
   Critical: '#dc2626',
   Moderate: '#d97706',
@@ -89,10 +139,40 @@ const BAR_GRADIENTS = [
   '#6366f1', '#4f46e5', '#4338ca', '#3730a3', '#312e81',
 ];
 
-function DtcPage({ days, dtcCode, customerName }) {
-  const { data, loading } = useQuery(DTC_QUERY, {
+function severityTypeFromLevel(level) {
+  const severity = Number(level);
+  if (!Number.isFinite(severity)) return 'Unknown';
+  if (severity >= 3) return 'Critical';
+  if (severity === 2) return 'Major';
+  if (severity === 1) return 'Minor';
+  if (severity === 0) return 'Info';
+  return 'Unknown';
+}
+
+function severityTypeColor(type) {
+  if (type === 'Critical') return 'red';
+  if (type === 'Major') return 'orange';
+  if (type === 'Minor') return 'blue';
+  if (type === 'Info') return 'info';
+  return 'info';
+}
+
+function DtcPage({ days, dtcCode, customerName, onSelectVehicle, onSelectDtc }) {
+  const selectedCode = String(dtcCode || '').trim().toUpperCase();
+  const isSingleCodeMode = Boolean(selectedCode);
+
+  const { data: fleetData, loading: fleetLoading } = useQuery(DTC_FLEET_QUERY, {
     variables: { days, limit: 10, customerName: customerName || null },
+    skip: isSingleCodeMode,
   });
+
+  const { data: selectedData, loading: selectedLoading } = useQuery(DTC_SELECTED_QUERY, {
+    variables: { dtcCode: selectedCode, days, limit: 12, customerName: customerName || null },
+    skip: !isSingleCodeMode,
+  });
+
+  const data = fleetData;
+  const loading = fleetLoading;
 
   const kpis = data?.fleetKpis;
   const topCodes = data?.topDtcCodes ?? [];
@@ -103,6 +183,132 @@ function DtcPage({ days, dtcCode, customerName }) {
   const fleetImpact = data?.dtcFleetImpact ?? [];
   const cooccurrence = data?.dtcCooccurrence ?? [];
   const maxOcc = Math.max(...topCodes.map((d) => d.occurrences), 1);
+
+  const selectedKpis = selectedData?.selectedDtcKpis;
+  const selectedTrend = selectedData?.selectedDtcWeeklyTrend ?? [];
+  const selectedCooccurrence = selectedData?.selectedDtcCooccurrence ?? [];
+  const selectedVehicles = selectedData?.selectedDtcVehicles ?? [];
+  const selectedDetail = selectedData?.dtcDetail;
+  const selectedDtcSeverityType = severityTypeFromLevel(selectedDetail?.severityLevel);
+
+  if (isSingleCodeMode) {
+    return (
+      <div className="page">
+        <h2>DTC Level Analytics - {selectedCode}</h2>
+        {selectedLoading && <div className="card" style={{ textAlign: 'center', padding: 32 }}>Loading selected DTC analytics...</div>}
+
+        {!selectedLoading && !selectedKpis && (
+          <div className="card" style={{ padding: 20 }}>
+            <h3 style={{ marginTop: 0 }}>No Data Found</h3>
+            <p style={{ marginBottom: 0, color: '#64748b' }}>
+              No records found for DTC <strong>{selectedCode}</strong> in the selected customer scope.
+            </p>
+          </div>
+        )}
+
+        {selectedKpis && (
+          <>
+            <div className="kpi-grid">
+              <KpiCard title="Affected Vehicles" value={selectedKpis.affectedVehicles ?? 0} icon="🚛" color="blue" />
+              <KpiCard title="Active Episodes" value={selectedKpis.activeEpisodes ?? 0} icon="⚠️" color="orange" />
+              <KpiCard title="DTC Severity Type" value={selectedDtcSeverityType} icon="🏷️" color={severityTypeColor(selectedDtcSeverityType)} />
+              <KpiCard title="Avg Resolution" value={`${selectedKpis.avgResolutionDays ?? 0} days`} icon="⏱️" color="info" />
+              <KpiCard title="Driver-Related Ratio" value={`${((selectedKpis.driverRelatedRatio ?? 0) * 100).toFixed(1)}%`} icon="👤" color="orange" />
+              <KpiCard title="Last Seen" value={selectedKpis.lastSeenDate || '—'} icon="🗓️" color="info" />
+              <KpiCard title="System / Subsystem" value={`${selectedKpis.system || '—'}${selectedKpis.subsystem ? ` / ${selectedKpis.subsystem}` : ''}`} icon="⚙️" color="blue" />
+            </div>
+
+            <div className="card chart-card">
+              <h3>Weekly Trend (Selected DTC)</h3>
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={selectedTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="weekStart" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Area type="monotone" dataKey="occurrences" name="Occurrences" stroke="#2563eb" fill="#93c5fd" fillOpacity={0.35} />
+                  <Area type="monotone" dataKey="activeEpisodes" name="Active Episodes" stroke="#d97706" fill="#fde68a" fillOpacity={0.25} />
+                  <Area type="monotone" dataKey="criticalEpisodes" name="Critical Episodes" stroke="#dc2626" fill="#fecaca" fillOpacity={0.25} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="chart-grid">
+              <div className="card">
+                <h3>Co-occurrence with {selectedCode}</h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 12px' }}>Co DTC</th>
+                        <th style={{ textAlign: 'right', padding: '8px 12px' }}>Co-occurrences</th>
+                        <th style={{ textAlign: 'right', padding: '8px 12px' }}>Vehicles</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedCooccurrence.map((row, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '8px 12px' }}>
+                            <button type="button" className="link-button" onClick={() => onSelectDtc && onSelectDtc(row.coDtcCode)}>
+                              <span className="dtc-pill moderate">{row.coDtcCode}</span>
+                            </button>
+                          </td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>{row.cooccurrenceCount}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right' }}>{row.vehiclesAffected}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="card">
+                <h3>DTC Knowledge</h3>
+                <details>
+                  <summary style={{ cursor: 'pointer', fontWeight: 600, marginBottom: 10 }}>Expand Details</summary>
+                  {selectedDetail ? (
+                    <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.55 }}>
+                      <p><strong>Description:</strong> {selectedDetail.description || '—'}</p>
+                      <p><strong>Severity:</strong> {selectedDetail.severityLevel ?? '—'}</p>
+                      <p><strong>Cause:</strong> {selectedDetail.primaryCause || '—'}</p>
+                      <p><strong>Symptoms:</strong> {selectedDetail.symptoms || '—'}</p>
+                      <p><strong>Impact:</strong> {selectedDetail.impactIfUnresolved || '—'}</p>
+                      <p><strong>Action:</strong> {selectedDetail.actionRequired || '—'}</p>
+                      <p><strong>Preventive:</strong> {selectedDetail.recommendedPreventiveAction || '—'}</p>
+                    </div>
+                  ) : (
+                    <p style={{ margin: 0, color: '#64748b' }}>No DTC master details found for this code.</p>
+                  )}
+                </details>
+              </div>
+            </div>
+
+            <DataTable
+              title="Vehicles Affected by Selected DTC"
+              columns={[
+                { key: 'vehicleNumber', label: 'Vehicle Number' },
+                { key: 'episodeCount', label: 'Episode Count' },
+                { key: 'activeEpisodes', label: 'Active Episodes' },
+                { key: 'lastReportedDate', label: 'Last Reported' },
+                {
+                  key: 'healthScore',
+                  label: 'Health Score',
+                  render: (v) => (
+                    <span className="badge" style={{ background: Number(v) >= 95 ? '#dcfce7' : Number(v) >= 80 ? '#fef3c7' : '#fee2e2', color: Number(v) >= 95 ? '#16a34a' : Number(v) >= 80 ? '#d97706' : '#dc2626' }}>
+                      {Number(v || 0).toFixed(1)}%
+                    </span>
+                  ),
+                },
+              ]}
+              rows={selectedVehicles}
+              onRowClick={(row) => onSelectVehicle && onSelectVehicle(row.uniqueid)}
+            />
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -121,14 +327,19 @@ function DtcPage({ days, dtcCode, customerName }) {
           <h3>Top DTC Codes</h3>
           <div className="hbar-list">
             {topCodes.map((d, i) => (
-              <div className="hbar-row" key={d.dtcCode}>
+              <button
+                type="button"
+                className="hbar-row hbar-row-button"
+                key={d.dtcCode}
+                onClick={() => onSelectDtc && onSelectDtc(d.dtcCode)}
+              >
                 <span className="hbar-label">{d.dtcCode}</span>
                 <span className="hbar-desc">{d.description}</span>
                 <div className="hbar-track">
                   <div className="hbar-fill" style={{ width: `${(d.occurrences / maxOcc) * 100}%`, background: BAR_GRADIENTS[i % BAR_GRADIENTS.length] }} />
                 </div>
                 <span className="hbar-count">{d.occurrences}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -184,7 +395,12 @@ function DtcPage({ days, dtcCode, customerName }) {
             render: (codes) => (
               <div className="pill-row">
                 {(codes || []).slice(0, 5).map((c) => (
-                  <span key={c} className="dtc-pill minor">{c}</span>
+                  <button key={c} type="button" className="link-button" onClick={(event) => {
+                    event.stopPropagation();
+                    onSelectDtc && onSelectDtc(c);
+                  }}>
+                    <span className="dtc-pill minor">{c}</span>
+                  </button>
                 ))}
                 {(codes || []).length > 5 && <span className="dtc-pill minor">+{codes.length - 5}</span>}
               </div>
@@ -200,6 +416,7 @@ function DtcPage({ days, dtcCode, customerName }) {
           { key: 'lastReported', label: 'Last Reported' },
         ]}
         rows={vehicles}
+        onRowClick={(row) => onSelectVehicle && onSelectVehicle(row.uniqueid)}
       />
 
       <div className="chart-grid">
@@ -232,6 +449,12 @@ function DtcPage({ days, dtcCode, customerName }) {
             },
           ]}
           rows={fleetImpact}
+          onCellClick={({ event, column, row }) => {
+            if (column.key === 'dtcCode') {
+              event.stopPropagation();
+              onSelectDtc && onSelectDtc(row.dtcCode);
+            }
+          }}
         />
 
         <div className="card">
@@ -250,8 +473,16 @@ function DtcPage({ days, dtcCode, customerName }) {
               <tbody>
                 {cooccurrence.map((row, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '8px 12px' }}><span className="dtc-pill minor">{row.dtcCodeA}</span></td>
-                    <td style={{ padding: '8px 12px' }}><span className="dtc-pill minor">{row.dtcCodeB}</span></td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <button type="button" className="link-button" onClick={() => onSelectDtc && onSelectDtc(row.dtcCodeA)}>
+                        <span className="dtc-pill minor">{row.dtcCodeA}</span>
+                      </button>
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <button type="button" className="link-button" onClick={() => onSelectDtc && onSelectDtc(row.dtcCodeB)}>
+                        <span className="dtc-pill minor">{row.dtcCodeB}</span>
+                      </button>
+                    </td>
                     <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>{row.cooccurrenceCount}</td>
                     <td style={{ padding: '8px 12px', textAlign: 'right' }}>{row.vehiclesAffected}</td>
                     <td style={{ padding: '8px 12px', textAlign: 'right' }}>{row.avgTimeGapSec != null ? `${(row.avgTimeGapSec / 60).toFixed(0)}m` : '—'}</td>

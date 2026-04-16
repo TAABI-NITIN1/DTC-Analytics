@@ -16,3 +16,5 @@ node_modules/
 build/
 .env.local
 myvenv/
+.venv311/
+.langgraph_api/

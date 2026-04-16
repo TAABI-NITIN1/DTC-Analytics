@@ -15,11 +15,13 @@ Prerequisites:
 """
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 # Force UTF-8 on Windows terminals to avoid cp1252 encoding errors
 if hasattr(sys.stdout, 'reconfigure'):
@@ -54,49 +56,55 @@ try:
     import mlflow
     _mlflow_uri = os.getenv('MLFLOW_TRACKING_URI', 'http://localhost:5000')
     _mlflow_experiment = os.getenv('EVAL_EXPERIMENT_NAME', 'taabi_ai_analyst_eval')
-    mlflow.set_tracking_uri(_mlflow_uri)
-    mlflow.set_experiment(_mlflow_experiment)
+    parsed = urlparse(_mlflow_uri)
+    host = parsed.hostname
+    port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+    reachable = False
+    if host:
+        try:
+            with socket.create_connection((host, port), timeout=0.5):
+                reachable = True
+        except Exception:
+            reachable = False
+
+    if reachable:
+        mlflow.set_tracking_uri(_mlflow_uri)
+        mlflow.set_experiment(_mlflow_experiment)
+    else:
+        mlflow = None  # type: ignore[assignment]
+        _mlflow_experiment = ''
 except ImportError:
+    mlflow = None  # type: ignore[assignment]
+    _mlflow_experiment = ''
+except Exception:
     mlflow = None  # type: ignore[assignment]
     _mlflow_experiment = ''
 
 EVAL_DIR = Path(__file__).parent
 
-IMPORTANT_METRICS = [
-    'weighted_score',
-    'avg_correctness',
-    'avg_hallucination_risk',
+MVP_METRICS = [
     'intent_accuracy',
     'avg_tool_f1',
-    'avg_latency_sec',
-    'failure_rate',
+    'avg_sql_success_rate',
+    'avg_sql_relevance_score',
+    'avg_correctness',
+    'avg_completeness',
+    'avg_groundedness_score',
 ]
 
-FULL_METRICS = [
-    'intent_accuracy',
-    'avg_tool_recall',
-    'avg_tool_precision',
-    'avg_tool_f1',
-    'avg_keyword_accuracy',
-    'avg_correctness',
-    'avg_relevance',
-    'avg_completeness',
+EXTENDED_METRICS = [
+    *MVP_METRICS,
+    'weighted_score',
     'avg_hallucination_risk',
-    'avg_hallucination_score',
     'avg_latency_sec',
     'avg_node_latency_sec',
     'avg_node_max_latency_sec',
-    'total_tokens_prompt',
-    'total_tokens_completion',
-    'total_tokens_all',
-    'avg_tokens_per_question',
-    'avg_prompt_tokens_per_question',
-    'avg_completion_tokens_per_question',
     'failure_rate',
     'failed_questions_count',
     'successful_questions_count',
-    'weighted_score',
-    'questions_evaluated',
+    'total_tokens_prompt',
+    'total_tokens_completion',
+    'total_tokens_all',
     'llm_judge_ratio',
     'context_length_error_rate',
     'tool_usage_rate',
@@ -151,6 +159,40 @@ def _extract_node_latency_stats(trace_log: list[dict]) -> dict:
         'node_latency_avg_sec': round(_safe_div(sum(durations), len(durations), 0.0), 3),
         'node_latency_max_sec': round(max(durations) if durations else 0.0, 3),
         'node_latency_by_node': {k: round(v, 3) for k, v in sorted(per_node.items())},
+    }
+
+
+def _extract_sql_metrics(result: dict, expected_tools: set[str]) -> dict:
+    sql_events = result.get('sql_events', []) or []
+    if not isinstance(sql_events, list):
+        sql_events = []
+
+    sql_count = len(sql_events)
+    successful_sql = sum(1 for e in sql_events if isinstance(e, dict) and e.get('success') is True)
+    sql_success_rate = _safe_div(successful_sql, sql_count, 0.0) if sql_count else (1.0 if not expected_tools else 0.0)
+
+    sql_tools = {
+        str(e.get('tool', '')).strip()
+        for e in sql_events
+        if isinstance(e, dict) and str(e.get('tool', '')).strip()
+    }
+    sql_tool_alignment = _safe_div(len(expected_tools & sql_tools), len(expected_tools), 1.0 if not expected_tools else 0.0)
+
+    valid_sql_count = sum(
+        1
+        for e in sql_events
+        if isinstance(e, dict)
+        and str(e.get('query', '')).strip().lower().startswith(('select', 'with'))
+    )
+    sql_shape_validity = _safe_div(valid_sql_count, sql_count, 0.0) if sql_count else (1.0 if not expected_tools else 0.0)
+    sql_relevance_score = round((0.7 * sql_tool_alignment) + (0.3 * sql_shape_validity), 3)
+
+    return {
+        'sql_query_count': sql_count,
+        'sql_success_rate': round(sql_success_rate, 3),
+        'sql_tool_alignment': round(sql_tool_alignment, 3),
+        'sql_shape_validity': round(sql_shape_validity, 3),
+        'sql_relevance_score': sql_relevance_score,
     }
 
 
@@ -310,6 +352,8 @@ def _score_question(q: dict, result: dict, latency: float, judge_llm: object | N
             'judge_rationale': 'heuristic fallback',
             'judge_mode': 'heuristic',
         }
+    groundedness_score = round(1.0 - semantic['hallucination_risk'], 3)
+    sql_metrics = _extract_sql_metrics(result, expected_tools)
 
     tok = result.get('token_usage') or {'prompt': 0, 'completion': 0}
     trace_log = result.get('trace_log', []) or []
@@ -332,6 +376,8 @@ def _score_question(q: dict, result: dict, latency: float, judge_llm: object | N
         'completeness':      semantic['completeness'],
         'hallucination_risk': semantic['hallucination_risk'],
         'hallucination_score': round(1.0 - semantic['hallucination_risk'], 3),
+        'groundedness_score': groundedness_score,
+        **sql_metrics,
         'judge_mode':        semantic['judge_mode'],
         'judge_rationale':   semantic['judge_rationale'],
         'latency_sec':       latency,
@@ -351,7 +397,7 @@ def _score_question(q: dict, result: dict, latency: float, judge_llm: object | N
 def run_evaluation() -> None:
     version_meta = _build_eval_version_metadata()
     judge_llm = _build_llm_judge()
-    metric_profile = os.getenv('EVAL_METRIC_PROFILE', 'important').strip().lower()
+    metric_profile = os.getenv('EVAL_METRIC_PROFILE', 'mvp').strip().lower()
     eval_customer_name = os.getenv('EVAL_CUSTOMER_NAME', 'VRL LOGISTICS LIMITED').strip() or 'VRL LOGISTICS LIMITED'
 
     questions = _load_datasets()
@@ -410,12 +456,15 @@ def run_evaluation() -> None:
     avg_tool_recall  = sum(r['tool_recall'] for r in scored_results) / n
     avg_tool_precision = sum(r['tool_precision'] for r in scored_results) / n
     avg_tool_f1 = sum(r['tool_f1'] for r in scored_results) / n
+    avg_sql_success_rate = sum(r['sql_success_rate'] for r in scored_results) / n
+    avg_sql_relevance_score = sum(r['sql_relevance_score'] for r in scored_results) / n
     avg_keyword_acc  = sum(r['keyword_hits'] for r in scored_results) / n
     avg_correctness  = sum(r['correctness'] for r in scored_results) / n
     avg_relevance    = sum(r['relevance'] for r in scored_results) / n
     avg_completeness = sum(r['completeness'] for r in scored_results) / n
     avg_hallucination_risk = sum(r['hallucination_risk'] for r in scored_results) / n
     avg_hallucination_score = sum(r['hallucination_score'] for r in scored_results) / n
+    avg_groundedness_score = sum(r['groundedness_score'] for r in scored_results) / n
     avg_latency      = sum(r['latency_sec'] for r in scored_results) / n
     avg_node_latency  = sum(r['node_latency_avg_sec'] for r in scored_results) / n
     avg_node_latency_max = sum(r['node_latency_max_sec'] for r in scored_results) / n
@@ -449,19 +498,24 @@ def run_evaluation() -> None:
     )
 
     weighted_score = (
-        0.35 * avg_correctness
-        + 0.15 * avg_relevance
-        + 0.15 * avg_completeness
-        + 0.15 * avg_hallucination_score
-        + 0.10 * min(1.0, 15.0 / max(avg_latency, 0.001))
-        + 0.10 * ((avg_tool_precision + avg_tool_recall) / 2)
+        0.18 * intent_accuracy
+        + 0.18 * avg_tool_f1
+        + 0.16 * avg_sql_success_rate
+        + 0.16 * avg_sql_relevance_score
+        + 0.14 * avg_correctness
+        + 0.10 * avg_completeness
+        + 0.08 * avg_groundedness_score
     )
 
     print(f'\n{"=" * 60}')
     print(f'  Questions evaluated   : {n}')
     print(f'  Intent accuracy       : {intent_accuracy:.1%}')
     print(f'  Avg tool F1           : {avg_tool_f1:.1%}')
+    print(f'  SQL success rate      : {avg_sql_success_rate:.1%}')
+    print(f'  SQL relevance score   : {avg_sql_relevance_score:.1%}')
     print(f'  Correctness           : {avg_correctness:.1%}')
+    print(f'  Completeness          : {avg_completeness:.1%}')
+    print(f'  Groundedness score    : {avg_groundedness_score:.1%}')
     print(f'  Hallucination risk    : {avg_hallucination_risk:.1%}')
     print(f'  Avg latency           : {avg_latency:.2f}s')
     print(f'  Failure rate          : {failure_rate:.1%}')
@@ -470,15 +524,18 @@ def run_evaluation() -> None:
     print(f'  Eval customer         : {eval_customer_name}')
     print(f'{"=" * 60}\n')
 
-    full_metric_values = {
+    extended_metric_values = {
         'intent_accuracy': round(intent_accuracy, 4),
+        'avg_tool_f1': round(avg_tool_f1, 4),
+        'avg_sql_success_rate': round(avg_sql_success_rate, 4),
+        'avg_sql_relevance_score': round(avg_sql_relevance_score, 4),
+        'avg_correctness': round(avg_correctness, 4),
+        'avg_completeness': round(avg_completeness, 4),
+        'avg_groundedness_score': round(avg_groundedness_score, 4),
         'avg_tool_recall': round(avg_tool_recall, 4),
         'avg_tool_precision': round(avg_tool_precision, 4),
-        'avg_tool_f1': round(avg_tool_f1, 4),
         'avg_keyword_accuracy': round(avg_keyword_acc, 4),
-        'avg_correctness': round(avg_correctness, 4),
         'avg_relevance': round(avg_relevance, 4),
-        'avg_completeness': round(avg_completeness, 4),
         'avg_hallucination_risk': round(avg_hallucination_risk, 4),
         'avg_hallucination_score': round(avg_hallucination_score, 4),
         'avg_latency_sec': round(avg_latency, 3),
@@ -500,17 +557,18 @@ def run_evaluation() -> None:
         'tool_usage_rate': round(tool_usage_rate, 4),
     }
 
-    important_metric_values = {
-        'weighted_score': round(weighted_score, 4),
-        'avg_correctness': round(avg_correctness, 4),
-        'avg_hallucination_risk': round(avg_hallucination_risk, 4),
+    mvp_metric_values = {
         'intent_accuracy': round(intent_accuracy, 4),
         'avg_tool_f1': round(avg_tool_f1, 4),
-        'avg_latency_sec': round(avg_latency, 3),
-        'failure_rate': round(failure_rate, 4),
+        'avg_sql_success_rate': round(avg_sql_success_rate, 4),
+        'avg_sql_relevance_score': round(avg_sql_relevance_score, 4),
+        'avg_correctness': round(avg_correctness, 4),
+        'avg_completeness': round(avg_completeness, 4),
+        'avg_groundedness_score': round(avg_groundedness_score, 4),
+        'weighted_score': round(weighted_score, 4),
     }
 
-    metric_values_to_log = full_metric_values if metric_profile == 'full' else important_metric_values
+    metric_values_to_log = extended_metric_values if metric_profile == 'full' else mvp_metric_values
 
     # ── MLflow logging ─────────────────────────────────────────
     if mlflow is not None:
@@ -548,16 +606,22 @@ def run_evaluation() -> None:
             'questions_evaluated':    n,
             'eval_customer_name':     eval_customer_name,
             'metric_profile':         metric_profile,
-            'important_metrics': IMPORTANT_METRICS,
-            'full_metrics':           FULL_METRICS,
+            'mvp_metrics':            MVP_METRICS,
+            'extended_metrics':       EXTENDED_METRICS,
+            'important_metrics':      MVP_METRICS,
+            'full_metrics':           EXTENDED_METRICS,
             'weighted_score':         round(weighted_score, 4),
             'avg_correctness':        round(avg_correctness, 4),
             'avg_hallucination_risk': round(avg_hallucination_risk, 4),
+            'avg_sql_success_rate':   round(avg_sql_success_rate, 4),
+            'avg_sql_relevance_score': round(avg_sql_relevance_score, 4),
+            'avg_groundedness_score': round(avg_groundedness_score, 4),
             'intent_accuracy':        round(intent_accuracy, 4),
             'avg_tool_f1':            round(avg_tool_f1, 4),
             'avg_latency_sec':        round(avg_latency, 3),
             'failure_rate':           round(failure_rate, 4),
-            'full_metric_values':     full_metric_values,
+            'mvp_metric_values':      mvp_metric_values,
+            'extended_metric_values': extended_metric_values,
         },
         'per_question': scored_results,
     }

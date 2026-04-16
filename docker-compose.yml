@@ -32,6 +32,33 @@ services:
       - mlflow
     restart: unless-stopped
 
+  langsmith-sync-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: langsmith-sync-worker
+    working_dir: /app
+    env_file:
+      - .env
+    command: ["python", "run_langsmith_sync_worker.py"]
+    environment:
+      PYTHONPATH: /app
+      LANGSMITH_SYNC_ENABLED: "1"
+      LANGSMITH_SYNC_INTERVAL_SEC: "120"
+      LANGSMITH_SYNC_LIMIT: "200"
+      LANGSMITH_SYNC_LOOKBACK_DAYS: "14"
+      LANGSMITH_SYNC_USE_CHECKPOINT: "1"
+      LANGSMITH_SYNC_PIPELINE_KEY: "langsmith_root_runs"
+      LANGSMITH_SYNC_SAFETY_LOOKBACK_MINUTES: "5"
+      # Optional override. Falls back to LANGCHAIN_PROJECT/LANGSMITH_PROJECT when empty.
+      LANGSMITH_SYNC_PROJECT: ""
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/.venv
+      - /app/.git
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend
