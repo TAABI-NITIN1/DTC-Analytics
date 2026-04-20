@@ -9,7 +9,10 @@ import MaintenancePage from './pages/MaintenancePage';
 import ChatWidget from './components/ChatWidget';
 import { aliasCustomerName, aliasVehicle } from './utils/demoMasking';
 
-const DEMO_MODE_STORAGE_KEY = 'dtc-demo-mode-enabled';
+const DEFAULT_API_BASE = (typeof window !== 'undefined')
+  ? `http://${window.location.hostname}:8005`
+  : 'http://127.0.0.1:8005';
+const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
 
 const CUSTOMER_VEHICLES_QUERY = gql`
   query CustomerVehicles($customerName: String!) {
@@ -30,12 +33,7 @@ function App() {
   const [debouncedVehicleSearchText, setDebouncedVehicleSearchText] = useState('');
   const [showVehicleSuggestions, setShowVehicleSuggestions] = useState(false);
   const [activeVehicleSuggestionIndex, setActiveVehicleSuggestionIndex] = useState(-1);
-  const [demoMode, setDemoMode] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    return window.localStorage.getItem(DEMO_MODE_STORAGE_KEY) === '1';
-  });
+  const [demoMode, setDemoMode] = useState(false);
   const vehicleSearchRef = useRef(null);
 
   // Reset to customer page when customer deselected
@@ -58,11 +56,24 @@ function App() {
   }, [vehicleSearchText]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    window.localStorage.setItem(DEMO_MODE_STORAGE_KEY, demoMode ? '1' : '0');
-  }, [demoMode]);
+    const controller = new AbortController();
+
+    const loadRuntimeConfig = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/runtime-config`, { signal: controller.signal });
+        if (!res.ok) {
+          return;
+        }
+        const payload = await res.json();
+        setDemoMode(Boolean(payload?.demo_mode_enabled));
+      } catch (_err) {
+        // Keep default mode when config endpoint is unavailable.
+      }
+    };
+
+    loadRuntimeConfig();
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     if (!selectedCustomer) {
@@ -204,18 +215,6 @@ function App() {
             </span>
           </div>
         )}
-
-        <div className="demo-toggle-row">
-          <label className="demo-toggle" htmlFor="demo-mode-toggle">
-            <input
-              id="demo-mode-toggle"
-              type="checkbox"
-              checked={demoMode}
-              onChange={(e) => setDemoMode(e.target.checked)}
-            />
-            <span>Demo Mode (mask customer and vehicle identities)</span>
-          </label>
-        </div>
 
         {/* Toolbar — only visible when customer selected and not on customer page */}
         {selectedCustomer && activeLevel !== 'customer' && (

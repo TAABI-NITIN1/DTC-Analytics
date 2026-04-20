@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import httpx
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -108,6 +109,10 @@ class ChatRequest(BaseModel):
     query: str | None = None
     conversation_id: str | None = None
     context: dict | None = None
+
+
+def _is_demo_mode_enabled() -> bool:
+    return str(os.getenv('DEMO_MODE_ENABLED') or '0').strip().lower() in {'1', 'true', 'yes', 'on'}
 
 # -------------------------------
 # Dify logging
@@ -261,6 +266,13 @@ def favicon():
 @app.get('/health')
 def health():
     return {"status": "ok"}
+
+
+@app.get('/api/runtime-config')
+def runtime_config():
+    return {
+        'demo_mode_enabled': _is_demo_mode_enabled(),
+    }
 
 
 
