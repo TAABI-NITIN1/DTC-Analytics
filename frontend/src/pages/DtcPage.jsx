@@ -18,6 +18,7 @@ import {
 } from 'recharts';
 import KpiCard from '../components/KpiCard';
 import DataTable from '../components/DataTable';
+import { aliasCustomerName, aliasVehicle, aliasVehicleFromRow } from '../utils/demoMasking';
 
 const DTC_FLEET_QUERY = gql`
   query DtcDashboard($days: Int!, $limit: Int!, $customerName: String) {
@@ -157,7 +158,7 @@ function severityTypeColor(type) {
   return 'info';
 }
 
-function DtcPage({ days, dtcCode, customerName, onSelectVehicle, onSelectDtc }) {
+function DtcPage({ days, dtcCode, customerName, onSelectVehicle, onSelectDtc, demoMode }) {
   const selectedCode = String(dtcCode || '').trim().toUpperCase();
   const isSingleCodeMode = Boolean(selectedCode);
 
@@ -287,7 +288,11 @@ function DtcPage({ days, dtcCode, customerName, onSelectVehicle, onSelectDtc }) 
             <DataTable
               title="Vehicles Affected by Selected DTC"
               columns={[
-                { key: 'vehicleNumber', label: 'Vehicle Number' },
+                {
+                  key: 'vehicleNumber',
+                  label: 'Vehicle Number',
+                  render: (v, row) => (demoMode ? aliasVehicleFromRow(row) : v),
+                },
                 { key: 'episodeCount', label: 'Episode Count' },
                 { key: 'activeEpisodes', label: 'Active Episodes' },
                 { key: 'lastReportedDate', label: 'Last Reported' },
@@ -387,8 +392,16 @@ function DtcPage({ days, dtcCode, customerName, onSelectVehicle, onSelectDtc }) 
       <DataTable
         title="Vehicles with DTCs"
         columns={[
-          { key: 'vehicleNumber', label: 'Vehicle' },
-          { key: 'customerName', label: 'Customer' },
+          {
+            key: 'vehicleNumber',
+            label: 'Vehicle',
+            render: (v, row) => (demoMode ? aliasVehicleFromRow(row) : v),
+          },
+          {
+            key: 'customerName',
+            label: 'Customer',
+            render: (v) => (demoMode ? aliasCustomerName(v) : v),
+          },
           {
             key: 'dtcCodes',
             label: 'DTC Codes',
@@ -505,7 +518,7 @@ function DtcPage({ days, dtcCode, customerName, onSelectVehicle, onSelectDtc }) 
                 <div className="checklist-icon" style={{ background: bg, color }}>{m.severityLevel >= 3 ? '!' : '✓'}</div>
                 <div className="checklist-text">
                   <strong>{m.dtcCode} — {m.subsystem || 'General'}</strong>
-                  <span>Vehicle {m.uniqueid} · {m.recommendation}</span>
+                  <span>Vehicle {demoMode ? aliasVehicle(m.uniqueid) : m.uniqueid} · {m.recommendation}</span>
                 </div>
               </li>
             );

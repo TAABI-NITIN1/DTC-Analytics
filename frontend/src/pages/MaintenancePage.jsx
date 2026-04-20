@@ -1,6 +1,7 @@
 import { gql, useQuery } from '@apollo/client';
 import KpiCard from '../components/KpiCard';
 import DataTable from '../components/DataTable';
+import { aliasVehicle, aliasVehicleFromRow } from '../utils/demoMasking';
 
 const MAINT_QUERY = gql`
   query MaintenanceDashboard($limit: Int!, $customerName: String) {
@@ -37,7 +38,7 @@ const severityLabel = (level) => {
   return 'Low';
 };
 
-function MaintenancePage({ customerName, onSelectVehicle, onSelectDtc }) {
+function MaintenancePage({ customerName, onSelectVehicle, onSelectDtc, demoMode }) {
   const { data, loading } = useQuery(MAINT_QUERY, {
     variables: { limit: 30, customerName: customerName || null },
   });
@@ -74,7 +75,7 @@ function MaintenancePage({ customerName, onSelectVehicle, onSelectDtc }) {
                     {' '}· {m.subsystem || 'General'}
                   </strong>
                   <span>
-                    Vehicle <button type="button" className="link-button" onClick={() => onSelectVehicle && onSelectVehicle(m.uniqueid)}>{m.uniqueid}</button> · {m.recommendation}
+                    Vehicle <button type="button" className="link-button" onClick={() => onSelectVehicle && onSelectVehicle(m.uniqueid)}>{demoMode ? aliasVehicle(m.uniqueid) : m.uniqueid}</button> · {m.recommendation}
                   </span>
                 </div>
                 <span className="badge badge-critical" style={{ marginLeft: 'auto', flexShrink: 0 }}>{severityLabel(m.severityLevel)}</span>
@@ -97,7 +98,7 @@ function MaintenancePage({ customerName, onSelectVehicle, onSelectDtc }) {
                     {' '}· {m.subsystem || 'General'}
                   </strong>
                   <span>
-                    Vehicle <button type="button" className="link-button" onClick={() => onSelectVehicle && onSelectVehicle(m.uniqueid)}>{m.uniqueid}</button> · {m.recommendation}
+                    Vehicle <button type="button" className="link-button" onClick={() => onSelectVehicle && onSelectVehicle(m.uniqueid)}>{demoMode ? aliasVehicle(m.uniqueid) : m.uniqueid}</button> · {m.recommendation}
                   </span>
                 </div>
                 <span className="badge badge-moderate" style={{ marginLeft: 'auto', flexShrink: 0 }}>{severityLabel(m.severityLevel)}</span>
@@ -120,7 +121,7 @@ function MaintenancePage({ customerName, onSelectVehicle, onSelectDtc }) {
                     {' '}· {m.subsystem || 'General'}
                   </strong>
                   <span>
-                    Vehicle <button type="button" className="link-button" onClick={() => onSelectVehicle && onSelectVehicle(m.uniqueid)}>{m.uniqueid}</button> · {m.recommendation}
+                    Vehicle <button type="button" className="link-button" onClick={() => onSelectVehicle && onSelectVehicle(m.uniqueid)}>{demoMode ? aliasVehicle(m.uniqueid) : m.uniqueid}</button> · {m.recommendation}
                   </span>
                 </div>
                 <span className="badge badge-minor" style={{ marginLeft: 'auto', flexShrink: 0 }}>{severityLabel(m.severityLevel)}</span>
@@ -134,7 +135,11 @@ function MaintenancePage({ customerName, onSelectVehicle, onSelectDtc }) {
         <DataTable
           title="Priority-Scored Maintenance Queue"
           columns={[
-            { key: 'vehicleNumber', label: 'Vehicle' },
+            {
+              key: 'vehicleNumber',
+              label: 'Vehicle',
+              render: (v, row) => (demoMode ? aliasVehicleFromRow(row) : v),
+            },
             { key: 'dtcCode', label: 'DTC Code' },
             { key: 'description', label: 'Description', render: (v) => v || '—' },
             {

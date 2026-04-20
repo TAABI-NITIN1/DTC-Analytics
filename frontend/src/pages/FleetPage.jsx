@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import KpiCard from '../components/KpiCard';
 import DataTable from '../components/DataTable';
+import { aliasCustomerName, aliasVehicleFromRow } from '../utils/demoMasking';
 
 const FLEET_QUERY = gql`
   query FleetDashboard($days: Int!, $limit: Int!, $customerName: String) {
@@ -103,7 +104,7 @@ const healthLabel = (score) => {
   return 'Poor';
 };
 
-function FleetPage({ days, customerName, onSelectVehicle, onSelectDtc }) {
+function FleetPage({ days, customerName, onSelectVehicle, onSelectDtc, demoMode }) {
   const { data, loading } = useQuery(FLEET_QUERY, {
     variables: { days, limit: 10, customerName: customerName || null },
   });
@@ -201,8 +202,16 @@ function FleetPage({ days, customerName, onSelectVehicle, onSelectDtc }) {
         <DataTable
           title="Top Risk Vehicles"
           columns={[
-            { key: 'vehicleNumber', label: 'Vehicle' },
-            { key: 'customerName', label: 'Customer' },
+            {
+              key: 'vehicleNumber',
+              label: 'Vehicle',
+              render: (v, row) => (demoMode ? aliasVehicleFromRow(row) : v),
+            },
+            {
+              key: 'customerName',
+              label: 'Customer',
+              render: (v) => (demoMode ? aliasCustomerName(v) : v),
+            },
             { key: 'activeFaultCount', label: 'Active DTCs' },
             { key: 'criticalFaultCount', label: 'Critical' },
             { key: 'longestActiveDays', label: 'Longest Active Issue', render: (v) => `${v} days` },

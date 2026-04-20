@@ -12,6 +12,7 @@ import {
   Bar,
 } from 'recharts';
 import DataTable from '../components/DataTable';
+import { aliasCustomerName, aliasVehicle } from '../utils/demoMasking';
 
 const VEHICLE_QUERY = gql`
   query VehicleDashboard($uniqueid: String!, $days: Int!, $customerName: String) {
@@ -77,7 +78,7 @@ const healthBg = (score) => {
   return '#fee2e2';
 };
 
-function VehiclePage({ uniqueid, days, customerName, onSelectDtc }) {
+function VehiclePage({ uniqueid, days, customerName, onSelectDtc, demoMode }) {
   const effectiveUniqueid = uniqueid || 'UNKNOWN';
   const { data, loading } = useQuery(VEHICLE_QUERY, {
     variables: { uniqueid: effectiveUniqueid, days, customerName: customerName || null },
@@ -112,9 +113,9 @@ function VehiclePage({ uniqueid, days, customerName, onSelectDtc }) {
       <div className="card">
         <div className="vehicle-header">
           <div className="vehicle-info">
-            <h2 style={{ margin: '0 0 6px' }}>{overview?.vehicleNumber || uniqueid}</h2>
+            <h2 style={{ margin: '0 0 6px' }}>{demoMode ? aliasVehicle(overview?.uniqueid || uniqueid) : (overview?.vehicleNumber || uniqueid)}</h2>
             <div className="vehicle-meta">
-              <span>👤 Customer: <strong>{overview?.customerName || '—'}</strong></span>
+              <span>👤 Customer: <strong>{demoMode ? aliasCustomerName(overview?.customerName || customerName || '') : (overview?.customerName || '—')}</strong></span>
               <span>📋 Model: <strong>{overview?.vehicleModel || '—'}</strong></span>
               <span>🔧 Type: <strong>{overview?.vehicleType || '—'}</strong></span>
               <span>⚡ Active DTCs: <strong>{overview?.activeFaultCount ?? 0}</strong></span>

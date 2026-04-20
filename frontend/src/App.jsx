@@ -7,6 +7,9 @@ import VehiclePage from './pages/VehiclePage';
 import CustomerPage from './pages/CustomerPage';
 import MaintenancePage from './pages/MaintenancePage';
 import ChatWidget from './components/ChatWidget';
+import { aliasCustomerName, aliasVehicle } from './utils/demoMasking';
+
+const DEMO_MODE_STORAGE_KEY = 'dtc-demo-mode-enabled';
 
 const CUSTOMER_VEHICLES_QUERY = gql`
   query CustomerVehicles($customerName: String!) {
@@ -27,6 +30,12 @@ function App() {
   const [debouncedVehicleSearchText, setDebouncedVehicleSearchText] = useState('');
   const [showVehicleSuggestions, setShowVehicleSuggestions] = useState(false);
   const [activeVehicleSuggestionIndex, setActiveVehicleSuggestionIndex] = useState(-1);
+  const [demoMode, setDemoMode] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.localStorage.getItem(DEMO_MODE_STORAGE_KEY) === '1';
+  });
   const vehicleSearchRef = useRef(null);
 
   // Reset to customer page when customer deselected
@@ -49,6 +58,13 @@ function App() {
   }, [vehicleSearchText]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.localStorage.setItem(DEMO_MODE_STORAGE_KEY, demoMode ? '1' : '0');
+  }, [demoMode]);
+
+  useEffect(() => {
     if (!selectedCustomer) {
       setVehicleSearchText('');
       setDebouncedVehicleSearchText('');
@@ -63,9 +79,9 @@ function App() {
     }
     const selected = customerVehicles.find((v) => v.uniqueid === uniqueid);
     if (selected) {
-      setVehicleSearchText(selected.vehicleNumber || selected.uniqueid);
+      setVehicleSearchText(demoMode ? aliasVehicle(selected.uniqueid) : (selected.vehicleNumber || selected.uniqueid));
     }
-  }, [uniqueid, customerVehicles]);
+  }, [uniqueid, customerVehicles, demoMode]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -84,16 +100,27 @@ function App() {
       return [];
     }
     return customerVehicles
-      .filter((vehicle) => String(vehicle.vehicleNumber || vehicle.uniqueid).toLowerCase().includes(query))
+      .filter((vehicle) => {
+        const rawMatch = String(vehicle.vehicleNumber || vehicle.uniqueid).toLowerCase().includes(query);
+        const aliasMatch = aliasVehicle(vehicle.uniqueid).toLowerCase().includes(query);
+        return rawMatch || aliasMatch;
+      })
       .slice(0, 20);
   }, [debouncedVehicleSearchText, customerVehicles]);
+
+  const displayVehicleLabel = (vehicle) => {
+    if (!vehicle) {
+      return '';
+    }
+    return demoMode ? aliasVehicle(vehicle.uniqueid) : (vehicle.vehicleNumber || vehicle.uniqueid);
+  };
 
   const selectVehicleAndNavigate = (vehicle) => {
     if (!vehicle?.uniqueid) {
       return;
     }
     setUniqueid(vehicle.uniqueid);
-    setVehicleSearchText(vehicle.vehicleNumber || vehicle.uniqueid);
+    setVehicleSearchText(displayVehicleLabel(vehicle));
     setShowVehicleSuggestions(false);
     setActiveVehicleSuggestionIndex(-1);
     setActiveLevel('vehicle');
@@ -172,11 +199,23 @@ function App() {
           <div className="customer-badge-bar">
             <span className="customer-badge">
               <span className="customer-badge-icon">👤</span>
-              {selectedCustomer}
+              {demoMode ? aliasCustomerName(selectedCustomer) : selectedCustomer}
               <button className="customer-badge-close" onClick={handleClearCustomer} title="Clear customer">×</button>
             </span>
           </div>
         )}
+
+        <div className="demo-toggle-row">
+          <label className="demo-toggle" htmlFor="demo-mode-toggle">
+            <input
+              id="demo-mode-toggle"
+              type="checkbox"
+              checked={demoMode}
+              onChange={(e) => setDemoMode(e.target.checked)}
+            />
+            <span>Demo Mode (mask customer and vehicle identities)</span>
+          </label>
+        </div>
 
         {/* Toolbar — only visible when customer selected and not on customer page */}
         {selectedCustomer && activeLevel !== 'customer' && (
@@ -233,8 +272,8 @@ function App() {
                           className={`typeahead-option ${index === activeVehicleSuggestionIndex ? 'active' : ''}`}
                           onClick={() => selectVehicleAndNavigate(v)}
                         >
-                          <span className="typeahead-primary">{v.vehicleNumber || v.uniqueid}</span>
-                          {v.vehicleNumber && <span className="typeahead-secondary">{v.uniqueid}</span>}
+                          <span className="typeahead-primary">{displayVehicleLabel(v)}</span>
+                          {(!demoMode && v.vehicleNumber) && <span className="typeahead-secondary">{v.uniqueid}</span>}
                         </button>
                       ))
                     )}
@@ -246,7 +285,7 @@ function App() {
         )}
 
         {activeLevel === 'customer' ? (
-          <CustomerPage onSelectCustomer={handleSelectCustomer} />
+          <CustomerPage onSelectCustomer={handleSelectCustomer} demoMode={demoMode} />
         ) : null}
         {activeLevel === 'fleet' ? (
           <FleetPage
@@ -254,6 +293,7 @@ function App() {
             customerName={selectedCustomer}
             onSelectVehicle={handleVehicleSelect}
             onSelectDtc={handleDtcSelect}
+            demoMode={demoMode}
           />
         ) : null}
         {activeLevel === 'dtc' ? (
@@ -263,6 +303,7 @@ function App() {
             customerName={selectedCustomer}
             onSelectVehicle={handleVehicleSelect}
             onSelectDtc={handleDtcSelect}
+            demoMode={demoMode}
           />
         ) : null}
         {activeLevel === 'vehicle' ? (
@@ -271,6 +312,7 @@ function App() {
             uniqueid={uniqueid}
             customerName={selectedCustomer}
             onSelectDtc={handleDtcSelect}
+            demoMode={demoMode}
           />
         ) : null}
         {activeLevel === 'maintenance' ? (
@@ -278,6 +320,7 @@ function App() {
             customerName={selectedCustomer}
             onSelectVehicle={handleVehicleSelect}
             onSelectDtc={handleDtcSelect}
+            demoMode={demoMode}
           />
         ) : null}
       </main>
@@ -286,7 +329,7 @@ function App() {
         customer_name: selectedCustomer || '',
         vehicle_number: customerVehicles.find(v => v.uniqueid === uniqueid)?.vehicleNumber || '',
         dtc_code: dtcCode || '',
-      }} />
+      }} demoMode={demoMode} />
     </div>
   );
 }

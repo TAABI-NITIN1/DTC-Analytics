@@ -10,6 +10,7 @@ import {
   Legend,
 } from 'recharts';
 import KpiCard from '../components/KpiCard';
+import { aliasCustomerName } from '../utils/demoMasking';
 
 const CUSTOMER_QUERY = gql`
   query CustomerDashboard($limit: Int!) {
@@ -23,7 +24,7 @@ const CUSTOMER_QUERY = gql`
   }
 `;
 
-function CustomerPage({ onSelectCustomer }) {
+function CustomerPage({ onSelectCustomer, demoMode }) {
   const { data, loading } = useQuery(CUSTOMER_QUERY, { variables: { limit: 50 } });
   const rows = data?.customerOverview ?? [];
 
@@ -87,9 +88,9 @@ function CustomerPage({ onSelectCustomer }) {
                   key={r.customerName}
                   className="clickable-row"
                   onClick={() => onSelectCustomer && onSelectCustomer(r.customerName)}
-                  title={`View ${r.customerName} dashboard`}
+                  title={`View ${demoMode ? aliasCustomerName(r.customerName) : r.customerName} dashboard`}
                 >
-                  <td><strong>{r.customerName}</strong></td>
+                  <td><strong>{demoMode ? aliasCustomerName(r.customerName) : r.customerName}</strong></td>
                   <td>{r.vehicleCount}</td>
                   <td>
                     {r.activeFaultVehicles > 0 ? (

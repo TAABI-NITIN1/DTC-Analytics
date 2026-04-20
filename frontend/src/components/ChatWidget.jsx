@@ -4,6 +4,12 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend,
 } from 'recharts';
+import {
+  aliasCustomerName,
+  registerAliasesFromData,
+  maskSensitiveObject,
+  maskSensitiveText,
+} from '../utils/demoMasking';
 
 const COLORS = ['#1e40af', '#3b82f6', '#16a34a', '#d97706', '#dc2626', '#8b5cf6', '#0284c7', '#ea580c'];
 
@@ -216,7 +222,7 @@ const MODE_SUGGESTIONS = {
 };
 
 /* ── Main Chat Widget Component ─────────────────────────────────── */
-export default function ChatWidget({ pageContext }) {
+export default function ChatWidget({ pageContext, demoMode }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -247,18 +253,26 @@ export default function ChatWidget({ pageContext }) {
     previousCustomerScopeRef.current = customerScope;
   }, [customerScope]);
 
+  useEffect(() => {
+    registerAliasesFromData(pageContext || {});
+  }, [pageContext]);
+
   const sendMessage = async (overrideText) => {
     const text = (overrideText || input).trim();
     if (!text || loading) return;
 
-    const userMsg = { role: 'user', content: text };
+    const userMsg = {
+      role: 'user',
+      content: demoMode ? maskSensitiveText(text) : text,
+      rawContent: text,
+    };
     const newMsgs = [...messages, userMsg];
     setMessages(newMsgs);
     setInput('');
     setLoading(true);
 
     try {
-      const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }));
+      const apiMessages = newMsgs.map((m) => ({ role: m.role, content: m.rawContent || m.content }));
       const body = { messages: apiMessages };
       if (conversationId) {
         body.conversation_id = conversationId;
@@ -281,10 +295,13 @@ export default function ChatWidget({ pageContext }) {
       if (data?.conversation_id) {
         setConversationId(String(data.conversation_id));
       }
+      registerAliasesFromData(data?.tool_results || {});
+      registerAliasesFromData(data?.chart || {});
       const assistantMsg = {
         role: 'assistant',
-        content: data.text || 'No response.',
-        chart: data.chart || null,
+        content: demoMode ? maskSensitiveText(data.text || 'No response.') : (data.text || 'No response.'),
+        rawContent: data.text || 'No response.',
+        chart: demoMode ? maskSensitiveObject(data.chart || null) : (data.chart || null),
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err) {
@@ -333,7 +350,7 @@ export default function ChatWidget({ pageContext }) {
               <span className="chat-header-icon">✦</span>
               <span>{modeLabel}</span>
               {pageContext?.customer_name && (
-                <span className="chat-header-ctx">• {pageContext.customer_name}</span>
+                <span className="chat-header-ctx">• {demoMode ? aliasCustomerName(pageContext.customer_name) : pageContext.customer_name}</span>
               )}
             </div>
             <button className="chat-clear-btn" onClick={clearChat} title="Clear chat">

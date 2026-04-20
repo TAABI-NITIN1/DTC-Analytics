@@ -15,7 +15,7 @@ from strawberry.fastapi import GraphQLRouter
 from pydantic import BaseModel
 
 from src.config import load_env
-from src.clickhouse_utils import get_clickhouse_client, ensure_tables
+from src.clickhouse_utils import get_clickhouse_client
 from src.conversation_store import (
     append_conversation_message,
     ensure_conversation,
@@ -89,7 +89,7 @@ app.include_router(
 def _init_db():
     try:
         client = get_clickhouse_client()
-        ensure_tables(client)
+        client.execute('SELECT 1')
         ensure_conversation_tables()
         logging.info("✅ ClickHouse ready")
     except Exception as e:
