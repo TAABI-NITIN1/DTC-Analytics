@@ -56,11 +56,9 @@ function App() {
   }, [vehicleSearchText]);
 
   useEffect(() => {
-    const controller = new AbortController();
-
     const loadRuntimeConfig = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/runtime-config`, { signal: controller.signal });
+        const res = await fetch(`${API_BASE}/api/runtime-config`);
         if (!res.ok) {
           return;
         }
@@ -72,7 +70,6 @@ function App() {
     };
 
     loadRuntimeConfig();
-    return () => controller.abort();
   }, []);
 
   useEffect(() => {

@@ -56,11 +56,10 @@ async def handle_client_disconnect(request: Request, exc: ClientDisconnect):
 # -------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://4.224.101.147:5173",
-    ],
+    # Allow the local dev host(s) used during development. Use a regex
+    # so we can match the IP or localhost variants without listing each
+    # exact origin. Keep credentials enabled for local auth flows.
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|4\.224\.101\.147):5173$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
