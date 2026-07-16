@@ -5,9 +5,90 @@ import math
 from typing import List, Optional
 
 import strawberry
+from graphql import GraphQLError
+from strawberry.extensions import SchemaExtension
+from strawberry.types import Info
 
 from src.clickhouse_utils import get_clickhouse_client
 from src.clickhouse_utils_v2 import V2_TABLES
+from src.dtc_mcp.dtc_repository import DTCRepository
+from src.dtc_mcp.fleet_repository import FleetRepository
+from src.dtc_mcp.maintenance_repository import MaintenanceRepository
+from src.dtc_mcp.models import TenantContext
+from src.dtc_mcp.repository import RepositoryError, RepositoryExecutor
+from src.dtc_mcp.security import SecurityError, require_scope
+from src.dtc_mcp.vehicle_repository import VehicleRepository
+
+
+_CUSTOMER_SCOPED_FIELDS = {
+    "customer_vehicles", "fleet_kpis", "fleet_overview", "fleet_trend", "top_risk_vehicles",
+    "dtc_summary", "top_dtc_codes", "severity_breakdown", "dtc_trend", "dtc_alerts_trend",
+    "dtc_affected_vehicles", "selected_dtc_kpis", "selected_dtc_weekly_trend",
+    "selected_dtc_cooccurrence", "selected_dtc_vehicles", "vehicles_with_dtcs", "vehicle_faults",
+    "vehicle_timeline", "maintenance_recommendations", "fleet_health_snap", "fleet_system_health",
+    "fleet_fault_trends", "dtc_fleet_impact", "dtc_cooccurrence", "enhanced_maintenance",
+}
+_CUSTOMER_SCOPED_GRAPHQL_FIELDS = {name.split("_")[0] + "".join(part.title() for part in name.split("_")[1:]) for name in _CUSTOMER_SCOPED_FIELDS}
+
+
+class TenantScopeExtension(SchemaExtension):
+    def resolve(self, next_, root, info, *args, **kwargs):
+        context = info.context if isinstance(info.context, dict) else {}
+        tenant = context.get("tenant_context")
+        if not isinstance(tenant, TenantContext):
+            raise GraphQLError("UNAUTHENTICATED")
+        requested = kwargs.get("customerName", kwargs.get("customer_name"))
+        if requested:
+            _customer_scope(info, tenant, str(requested))
+        return next_(root, info, *args, **kwargs)
+
+
+def _customer_scope(info: Info, tenant: TenantContext, customer_name: str) -> TenantContext:
+    context = info.context if isinstance(info.context, dict) else {}
+    cache = context.setdefault("dtc_customer_scope_cache", {})
+    if customer_name in cache:
+        return cache[customer_name]
+    rows = _rows(lambda: _repositories(info)["vehicles"].get_authorized_customer_ids(tenant, customer_name))
+    customer_ids = tuple(str(row["clientLoginId"]) for row in rows if row.get("clientLoginId") is not None)
+    if not customer_ids:
+        raise GraphQLError("FORBIDDEN")
+    scoped = tenant.model_copy(update={"customer_id": customer_name, "allowed_customer_ids": customer_ids})
+    cache[customer_name] = scoped
+    return scoped
+
+
+def _tenant(info: Info, scope: str, customer_name: str | None = None) -> TenantContext:
+    context = info.context if isinstance(info.context, dict) else {}
+    tenant = context.get("tenant_context")
+    if not isinstance(tenant, TenantContext):
+        raise GraphQLError("UNAUTHENTICATED")
+    try:
+        require_scope(tenant, scope)
+    except SecurityError as exc:
+        raise GraphQLError(exc.code.value) from exc
+    return _customer_scope(info, tenant, customer_name) if customer_name else tenant
+
+
+def _repositories(info: Info) -> dict[str, object]:
+    context = info.context if isinstance(info.context, dict) else {}
+    repositories = context.get("dtc_repositories")
+    if repositories is None:
+        executor = RepositoryExecutor()
+        repositories = {
+            "fleet": FleetRepository(executor),
+            "vehicles": VehicleRepository(executor),
+            "dtcs": DTCRepository(executor),
+            "maintenance": MaintenanceRepository(executor),
+        }
+        context["dtc_repositories"] = repositories
+    return repositories
+
+
+def _rows(call):
+    try:
+        return call().rows
+    except RepositoryError as exc:
+        raise GraphQLError(exc.code.value) from exc
 
 
 # def _query_rows(sql: str, params: dict | None = None):
@@ -66,6 +147,20 @@ def _customer_client_and(customer_name: str | None, params: dict, client_expr: s
         f"SELECT DISTINCT clientLoginId FROM {vm} WHERE customer_name = %(_cust)s"
         f")"
     )
+
+
+def _fault_counts_subquery(customer_name: str | None, params: dict) -> str:
+    vfm = V2_TABLES['vehicle_fault_master']
+    where = _customer_and(customer_name, params)
+    return f"""
+        SELECT
+            uniqueid,
+            countIf(is_resolved = 0) AS active_fault_count,
+            countIf(is_resolved = 0 AND severity_level >= 3) AS critical_fault_count
+        FROM {vfm}
+        WHERE 1=1 {where}
+        GROUP BY uniqueid
+    """
 
 
 # -- Fleet-level types --
@@ -377,133 +472,40 @@ class Query:
     # -- Customer selectors --
 
     @strawberry.field
-    def customer_names(self) -> list[str]:
-        """Distinct non-empty customer names for dropdown / landing page."""
-        vhs = V2_TABLES['vehicle_health_summary']
-        rows = _query_rows(
-            f'''
-            SELECT DISTINCT customer_name
-            FROM {vhs}
-            WHERE customer_name != ''
-            ORDER BY customer_name
-            ''',
-        )
-        return [str(r[0]) for r in rows]
+    def customer_names(self, info: Info) -> list[str]:
+        """Customer names mapped to the authenticated identity's allowed IDs."""
+        tenant = _tenant(info, "dtc:fleet:read")
+        rows = _rows(lambda: _repositories(info)["vehicles"].list_authorized_customer_names(tenant))
+        return [str(row["customer_name"]) for row in rows]
 
     @strawberry.field
-    def customer_vehicles(self, customer_name: str) -> list[CustomerVehicle]:
+    def customer_vehicles(self, info: Info, customer_name: str) -> list[CustomerVehicle]:
         """Vehicles belonging to a specific customer (for vehicle dropdown)."""
-        vhs = V2_TABLES['vehicle_health_summary']
-        rows = _query_rows(
-            f'''
-            SELECT uniqueid, vehicle_number
-            FROM {vhs}
-            WHERE customer_name = %(cust)s
-            ORDER BY vehicle_number
-            ''',
-            {'cust': customer_name},
-        )
+        tenant = _tenant(info, "dtc:vehicle:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["vehicles"].list_customer_vehicles(tenant))
         return [
-            CustomerVehicle(uniqueid=str(uid), vehicle_number=str(vn or uid))
-            for uid, vn in rows
+            CustomerVehicle(uniqueid=str(row["uniqueid"]), vehicle_number=str(row["vehicle_number"] or row["uniqueid"]))
+            for row in rows
         ]
 
     # -- Fleet KPIs (enriched) --
 
     @strawberry.field
-    def fleet_kpis(self, days: int = 30, customer_name: Optional[str] = None) -> FleetKpis | None:
-        vhs = V2_TABLES['vehicle_health_summary']
-        vfm = V2_TABLES['vehicle_fault_master']
-        cn = customer_name or None
-
-        # Fleet snapshot from vehicle_health_summary
-        p1: dict = {}
-        c1 = _customer_and(cn, p1)
-        snap = _query_rows(
-            f'''
-            SELECT
-                count() AS total_vehicles,
-                countIf(active_fault_count > 0) AS vehicles_with_dtcs,
-                countIf(critical_fault_count > 0) AS critical_vehicles,
-                avg(vehicle_health_score) AS fleet_health_score
-            FROM {vhs}
-            WHERE 1=1 {c1}
-            ''',
-            p1,
-        )
-        total_v = int(snap[0][0]) if snap else 0
-        active_v = int(snap[0][1]) if snap else 0
-        crit_v = int(snap[0][2]) if snap else 0
-        health = _safe_float(snap[0][3] if snap else 0.0)
-
-        # Average resolution days (resolved episodes)
-        p3: dict = {'days': int(days)}
-        c3 = _customer_and(cn, p3)
-        res_rows = _query_rows(
-            f'''
-            SELECT avg(resolution_time_sec / 86400.0) AS avg_days
-            FROM {vfm}
-            WHERE is_resolved = 1
-              AND event_date >= today() - %(days)s
-              AND resolution_time_sec > 0
-              {c3}
-            ''',
-            p3,
-        )
-        avg_res = _safe_float(res_rows[0][0] if res_rows else 0.0)
-
-        # Maintenance due
-        p4: dict = {}
-        c4 = _customer_and(cn, p4)
-        maint_rows = _query_rows(
-            f'''
-            SELECT count(DISTINCT uniqueid)
-            FROM {vfm}
-            WHERE is_resolved = 0 AND severity_level >= 3
-              {c4}
-            ''',
-            p4,
-        )
-        maint_due = int(maint_rows[0][0]) if maint_rows else 0
-
-        # Total DTC alerts (sum of occurrence counts in recent window)
-        p5: dict = {'days': int(days)}
-        c5 = _customer_and(cn, p5)
-        alert_rows = _query_rows(
-            f'''
-            SELECT sum(occurrence_count) AS total_alerts
-            FROM {vfm}
-            WHERE event_date >= today() - %(days)s
-              {c5}
-            ''',
-            p5,
-        )
-        total_alerts = int(alert_rows[0][0] or 0) if alert_rows else 0
-
-        # Critical alerts
-        p6: dict = {'days': int(days)}
-        c6 = _customer_and(cn, p6)
-        crit_alert_rows = _query_rows(
-            f'''
-            SELECT count()
-            FROM {vfm}
-            WHERE severity_level >= 3
-              AND event_date >= today() - %(days)s
-              {c6}
-            ''',
-            p6,
-        )
-        crit_alerts = int(crit_alert_rows[0][0]) if crit_alert_rows else 0
-
+    def fleet_kpis(self, info: Info, days: int = 30, customer_name: Optional[str] = None) -> FleetKpis | None:
+        tenant = _tenant(info, "dtc:fleet:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["fleet"].get_fleet_kpis(tenant, days=days))
+        if not rows:
+            return None
+        row = rows[0]
         return FleetKpis(
-            total_vehicles=total_v,
-            vehicles_with_dtcs=active_v,
-            critical_vehicles=crit_v,
-            avg_resolution_days=round(avg_res, 1),
-            fleet_health_score=round(health, 2),
-            maintenance_due=maint_due,
-            total_dtc_alerts=total_alerts,
-            critical_alerts=crit_alerts,
+            total_vehicles=int(row["total_vehicles"] or 0),
+            vehicles_with_dtcs=int(row["vehicles_with_dtcs"] or 0),
+            critical_vehicles=int(row["critical_vehicles"] or 0),
+            avg_resolution_days=_safe_round(row["avg_resolution_days"], 1),
+            fleet_health_score=_safe_round(row["fleet_health_score"], 2),
+            maintenance_due=int(row["maintenance_due"] or 0),
+            total_dtc_alerts=int(row["total_dtc_alerts"] or 0),
+            critical_alerts=int(row["critical_alerts"] or 0),
         )
 
     @strawberry.field
@@ -513,15 +515,20 @@ class Query:
 
         p: dict = {}
         c = _customer_and(cn, p)
+        fault_counts = _fault_counts_subquery(cn, p)
 
         rows = _query_rows(
             f'''
+            WITH fault_counts AS (
+                {fault_counts}
+            )
             SELECT
                 count() AS total_vehicles,
-                countIf(active_fault_count > 0) AS active_fault_vehicles,
-                countIf(critical_fault_count > 0) AS critical_fault_vehicles,
-                avg(vehicle_health_score) AS fleet_health_score
-            FROM {vhs}
+                countIf(coalesce(fc.active_fault_count, 0) > 0) AS active_fault_vehicles,
+                countIf(coalesce(fc.critical_fault_count, 0) > 0) AS critical_fault_vehicles,
+                avg(vhs.vehicle_health_score) AS fleet_health_score
+            FROM {vhs} vhs
+            LEFT JOIN fault_counts fc ON fc.uniqueid = vhs.uniqueid
             WHERE 1=1 {c}
             ''',
             p,
@@ -1021,480 +1028,228 @@ class Query:
     # -- Vehicle-level resolvers --
 
     @strawberry.field
-    def vehicle_overview(self, uniqueid: str) -> VehicleOverview | None:
-        vhs = V2_TABLES['vehicle_health_summary']
-        vm = V2_TABLES['vehicle_master']
-        rows = _query_rows(
-            f'''
-            SELECT
-                vs.uniqueid,
-                vs.vehicle_number,
-                ifNull(m.model, '') AS vehicle_model,
-                ifNull(m.vehicle_type, '') AS vehicle_type,
-                vs.customer_name,
-                vs.vehicle_health_score,
-                vs.active_fault_count,
-                vs.critical_fault_count
-            FROM {vhs} vs
-            LEFT JOIN {vm} m ON m.uniqueid = vs.uniqueid
-            WHERE vs.uniqueid = %(uniqueid)s
-            LIMIT 1
-            ''',
-            {'uniqueid': uniqueid},
-        )
+    def vehicle_overview(self, info: Info, uniqueid: str) -> VehicleOverview | None:
+        tenant = _tenant(info, "dtc:vehicle:read")
+        rows = _rows(lambda: _repositories(info)["vehicles"].get_vehicle_overview(tenant, uniqueid=uniqueid))
         if not rows:
             return None
-        uid, vehicle_number, vehicle_model, vehicle_type, cust_name, health_score, active_fault_count, critical_fault_count = rows[0]
+        row = rows[0]
         return VehicleOverview(
-            uniqueid=str(uid),
-            vehicle_number=str(vehicle_number or ''),
-            vehicle_model=str(vehicle_model or ''),
-            vehicle_type=str(vehicle_type or ''),
-            customer_name=str(cust_name or ''),
-            health_score=_safe_float(health_score),
-            active_fault_count=int(active_fault_count),
-            critical_fault_count=int(critical_fault_count),
+            uniqueid=str(row["uniqueid"]),
+            vehicle_number=str(row["vehicle_number"] or ''),
+            vehicle_model=str(row["vehicle_model"] or ''),
+            vehicle_type=str(row["vehicle_type"] or ''),
+            customer_name=str(row["customer_name"] or ''),
+            health_score=_safe_float(row["vehicle_health_score"]),
+            active_fault_count=int(row["active_fault_count"] or 0),
+            critical_fault_count=int(row["critical_fault_count"] or 0),
         )
 
     @strawberry.field
-    def vehicle_faults(self, uniqueid: str, days: int = 90, limit: int = 200, customer_name: Optional[str] = None) -> list[VehicleFault]:
-        vfm = V2_TABLES['vehicle_fault_master']
-        cn = customer_name or None
-        p: dict = {'uniqueid': uniqueid, 'days': int(days), 'limit': int(limit)}
-        c = _customer_and(cn, p)
-        rows = _query_rows(
-            f'''
-            SELECT
-                dtc_code,
-                count() AS episode_count,
-                countIf(is_resolved = 0) AS active_episodes,
-                max(severity_level) AS max_severity,
-                max(dateDiff('day', toDate(event_date), today())) AS days_persistence
-            FROM {vfm}
-            WHERE uniqueid = %(uniqueid)s
-              AND event_date >= today() - %(days)s
-              {c}
-            GROUP BY dtc_code
-            ORDER BY active_episodes DESC, max_severity DESC, episode_count DESC
-            LIMIT %(limit)s
-            ''',
-            p,
-        )
+    def vehicle_faults(self, info: Info, uniqueid: str, days: int = 90, limit: int = 200, customer_name: Optional[str] = None) -> list[VehicleFault]:
+        tenant = _tenant(info, "dtc:vehicle:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["vehicles"].get_vehicle_fault_summary(tenant, uniqueid=uniqueid, days=days, limit=limit))
         return [
             VehicleFault(
-                dtc_code=str(dtc_code),
-                episode_count=int(episode_count),
-                active_episodes=int(active_episodes),
-                max_severity=int(max_severity),
-                days_persistence=int(dp),
+                dtc_code=str(row["dtc_code"]),
+                episode_count=int(row["episode_count"] or 0),
+                active_episodes=int(row["active_episodes"] or 0),
+                max_severity=int(row["max_severity"] or 0),
+                days_persistence=int(row["days_persistence"] or 0),
             )
-            for dtc_code, episode_count, active_episodes, max_severity, dp in rows
+            for row in rows
         ]
 
     @strawberry.field
-    def vehicle_timeline(self, uniqueid: str, days: int = 90, customer_name: Optional[str] = None) -> list[VehicleTimelinePoint]:
-        vfm = V2_TABLES['vehicle_fault_master']
-        cn = customer_name or None
-        p: dict = {'uniqueid': uniqueid, 'days': int(days)}
-        c = _customer_and(cn, p)
-        rows = _query_rows(
-            f'''
-            SELECT
-                event_date,
-                countIf(is_resolved = 0) AS active_episodes,
-                countIf(severity_level >= 3 AND is_resolved = 0) AS critical_episodes
-            FROM {vfm}
-            WHERE uniqueid = %(uniqueid)s
-              AND event_date >= today() - %(days)s
-              {c}
-            GROUP BY event_date
-            ORDER BY event_date
-            ''',
-            p,
-        )
+    def vehicle_timeline(self, info: Info, uniqueid: str, days: int = 90, customer_name: Optional[str] = None) -> list[VehicleTimelinePoint]:
+        tenant = _tenant(info, "dtc:vehicle:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["vehicles"].get_vehicle_timeline_summary(tenant, uniqueid=uniqueid, days=days))
         return [
             VehicleTimelinePoint(
-                event_date=str(event_date),
-                active_episodes=int(active_episodes),
-                critical_episodes=int(critical_episodes),
+                event_date=str(row["event_date"]),
+                active_episodes=int(row["active_episodes"] or 0),
+                critical_episodes=int(row["critical_episodes"] or 0),
             )
-            for event_date, active_episodes, critical_episodes in rows
+            for row in rows
         ]
 
     # -- Customer / Maintenance resolvers --
 
     @strawberry.field
-    def customer_overview(self, limit: int = 50) -> list[CustomerOverview]:
-        vhs = V2_TABLES['vehicle_health_summary']
-        rows = _query_rows(
-            f'''
-            SELECT
-                ifNull(nullIf(customer_name, ''), 'Unassigned') AS cust_name,
-                count() AS vehicle_count,
-                countIf(active_fault_count > 0) AS active_fault_vehicles,
-                countIf(critical_fault_count > 0) AS critical_fault_vehicles,
-                avg(vehicle_health_score) AS avg_health_score
-            FROM {vhs}
-            GROUP BY cust_name
-            ORDER BY vehicle_count DESC
-            LIMIT %(limit)s
-            ''',
-            {'limit': int(limit)},
-        )
+    def customer_overview(self, info: Info, limit: int = 50) -> list[CustomerOverview]:
+        tenant = _tenant(info, "dtc:fleet:read")
+        rows = _rows(lambda: _repositories(info)["fleet"].get_customer_overview(tenant, limit=limit))
         return [
             CustomerOverview(
-                customer_name=str(customer_name),
-                vehicle_count=int(vehicle_count),
-                active_fault_vehicles=int(active_fault_vehicles),
-                critical_fault_vehicles=int(critical_fault_vehicles),
-                avg_health_score=_safe_float(avg_health_score),
+                customer_name=str(row["customer_name"]),
+                vehicle_count=int(row["vehicle_count"] or 0),
+                active_fault_vehicles=int(row["active_fault_vehicles"] or 0),
+                critical_fault_vehicles=int(row["critical_fault_vehicles"] or 0),
+                avg_health_score=_safe_float(row["avg_health_score"]),
             )
-            for customer_name, vehicle_count, active_fault_vehicles, critical_fault_vehicles, avg_health_score in rows
+            for row in rows
         ]
 
     @strawberry.field
-    def maintenance_recommendations(self, limit: int = 20, customer_name: Optional[str] = None) -> list[MaintenanceRecommendation]:
-        mp = V2_TABLES['maintenance_priority']
-        dm = V2_TABLES['dtc_master']
-        vhs = V2_TABLES['vehicle_health_summary']
-        cn = customer_name or None
-        p: dict = {'limit': int(limit)}
-        c = ''
-        if cn:
-            p['_cust'] = cn
-            c = f" AND mp.uniqueid IN (SELECT uniqueid FROM {vhs} WHERE customer_name = %(_cust)s)"
-        rows = _query_rows(
-            f'''
-            SELECT
-                mp.uniqueid,
-                mp.dtc_code,
-                mp.severity_level,
-                ifNull(d.subsystem, '') AS subsystem,
-                mp.recommended_action
-            FROM {mp} mp
-            LEFT JOIN {dm} d ON d.dtc_code = mp.dtc_code
-            WHERE 1=1
-              {c}
-            ORDER BY mp.maintenance_priority_score DESC
-            LIMIT %(limit)s
-            ''',
-            p,
-        )
+    def maintenance_recommendations(self, info: Info, limit: int = 20, customer_name: Optional[str] = None) -> list[MaintenanceRecommendation]:
+        tenant = _tenant(info, "dtc:maintenance:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["maintenance"].get_maintenance_recommendations(tenant, limit=limit))
         return [
             MaintenanceRecommendation(
-                uniqueid=str(uid),
-                dtc_code=str(dc),
-                severity_level=int(sv),
-                subsystem=str(ss or ''),
-                recommendation=str(rec) if rec else 'Schedule preventive maintenance.',
+                uniqueid=str(row["uniqueid"]),
+                dtc_code=str(row["dtc_code"]),
+                severity_level=int(row["severity_level"] or 0),
+                subsystem=str(row["subsystem"] or ''),
+                recommendation=str(row["recommended_action"] or 'Schedule preventive maintenance.'),
             )
-            for uid, dc, sv, ss, rec in rows
+            for row in rows
         ]
 
 
     # -- New V2 analytics resolvers --
 
     @strawberry.field
-    def fleet_health_snap(self, customer_name: Optional[str] = None) -> FleetHealthSnap | None:
+    def fleet_health_snap(self, info: Info, customer_name: Optional[str] = None) -> FleetHealthSnap | None:
         """Pre-computed fleet health summary from fleet_health_summary table."""
-        fhs = V2_TABLES['fleet_health_summary']
-        cn = customer_name or None
-        p: dict = {}
-        c = _customer_client_and(cn, p)
-        rows = _query_rows(
-            f'''
-            SELECT
-                sum(total_vehicles),
-                sum(vehicles_with_active_faults),
-                sum(vehicles_with_critical_faults),
-                sum(driver_related_faults),
-                if(
-                    sum(toFloat64(total_vehicles)) > 0,
-                    sum(fleet_health_score * toFloat64(total_vehicles)) / sum(toFloat64(total_vehicles)),
-                    100.0
-                ),
-                argMaxIf(most_common_dtc, vehicles_with_active_faults, most_common_dtc != ''),
-                argMaxIf(most_common_system, vehicles_with_active_faults, most_common_system != ''),
-                argMax(active_fault_trend, vehicles_with_active_faults)
-            FROM {fhs}
-            WHERE 1=1 {c}
-            ''',
-            p,
-        )
-        if not rows or not rows[0][0]:
+        tenant = _tenant(info, "dtc:fleet:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["fleet"].get_fleet_health_summary(tenant))
+        if not rows:
             return None
-        r = rows[0]
+        row = rows[0]
         return FleetHealthSnap(
-            total_vehicles=int(r[0]),
-            vehicles_with_active_faults=int(r[1]),
-            vehicles_with_critical_faults=int(r[2]),
-            driver_related_faults=int(r[3]),
-            fleet_health_score=_safe_round(r[4], 2),
-            most_common_dtc=str(r[5] or ''),
-            most_common_system=str(r[6] or ''),
-            active_fault_trend=str(r[7] or 'stable'),
+            total_vehicles=int(row["total_vehicles"] or 0),
+            vehicles_with_active_faults=int(row["vehicles_with_active_faults"] or 0),
+            vehicles_with_critical_faults=int(row["vehicles_with_critical_faults"] or 0),
+            driver_related_faults=int(row["driver_related_faults"] or 0),
+            fleet_health_score=_safe_round(row["fleet_health_score"], 2),
+            most_common_dtc=str(row["most_common_dtc"] or ''),
+            most_common_system=str(row["most_common_system"] or ''),
+            active_fault_trend=str(row["active_fault_trend"] or 'stable'),
         )
 
     @strawberry.field
-    def fleet_system_health(self, customer_name: Optional[str] = None) -> list[FleetSystemHealth]:
+    def fleet_system_health(self, info: Info, customer_name: Optional[str] = None) -> list[FleetSystemHealth]:
         """Per-system health breakdown."""
-        fsh = V2_TABLES['fleet_system_health']
-        cn = customer_name or None
-        p: dict = {}
-        c = _customer_client_and(cn, p)
-        rows = _query_rows(
-            f'''
-            SELECT
-                multiIf(system = '' OR system = 'nan', 'other', system) AS sys,
-                sum(vehicles_affected),
-                sum(active_faults),
-                sum(critical_faults),
-                avg(risk_score),
-                anyLast(trend)
-            FROM {fsh}
-            WHERE 1=1 {c}
-            GROUP BY sys
-            ORDER BY avg(risk_score) DESC
-            ''',
-            p,
-        )
+        tenant = _tenant(info, "dtc:fleet:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["fleet"].get_system_health(tenant))
         return [
             FleetSystemHealth(
-                system=str(s),
-                vehicles_affected=int(va),
-                active_faults=int(af),
-                critical_faults=int(cf),
-                risk_score=_safe_round(rs, 2),
-                trend=str(t or 'stable'),
+                system=str(row["system"]),
+                vehicles_affected=int(row["vehicles_affected"] or 0),
+                active_faults=int(row["active_faults"] or 0),
+                critical_faults=int(row["critical_faults"] or 0),
+                risk_score=_safe_round(row["risk_score"], 2),
+                trend=str(row["trend"] or 'stable'),
             )
-            for s, va, af, cf, rs, t in rows
+            for row in rows
         ]
 
     @strawberry.field
-    def fleet_fault_trends(self, days: int = 30, customer_name: Optional[str] = None) -> list[FleetFaultTrendPoint]:
+    def fleet_fault_trends(self, info: Info, days: int = 30, customer_name: Optional[str] = None) -> list[FleetFaultTrendPoint]:
         """Daily fleet fault trends (new, resolved, driver-related) from pre-computed table."""
-        fft = V2_TABLES['fleet_fault_trends']
-        cn = customer_name or None
-        p: dict = {'days': int(days)}
-        c = _customer_client_and(cn, p)
-        rows = _query_rows(
-            f'''
-            SELECT
-                date,
-                sum(active_faults),
-                sum(new_faults),
-                sum(resolved_faults),
-                sum(driver_related_faults),
-                avg(fleet_health_score)
-            FROM {fft}
-            WHERE date >= today() - %(days)s
-              {c}
-            GROUP BY date
-            ORDER BY date
-            ''',
-            p,
-        )
+        tenant = _tenant(info, "dtc:fleet:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["fleet"].get_fault_trends(tenant, days=days))
         return [
             FleetFaultTrendPoint(
-                event_date=str(d),
-                active_faults=int(af),
-                new_faults=int(nf),
-                resolved_faults=int(rf),
-                driver_related_faults=int(drf),
-                fleet_health_score=_safe_round(fhs, 2),
+                event_date=str(row["date"]),
+                active_faults=int(row["active_faults"] or 0),
+                new_faults=int(row["new_faults"] or 0),
+                resolved_faults=int(row["resolved_faults"] or 0),
+                driver_related_faults=int(row["driver_related_faults"] or 0),
+                fleet_health_score=_safe_round(row["fleet_health_score"], 2),
             )
-            for d, af, nf, rf, drf, fhs in rows
+            for row in rows
         ]
 
     @strawberry.field
-    def dtc_fleet_impact(self, limit: int = 20, customer_name: Optional[str] = None) -> list[DtcFleetImpact]:
+    def dtc_fleet_impact(self, info: Info, limit: int = 20, customer_name: Optional[str] = None) -> list[DtcFleetImpact]:
         """DTC fleet impact ranking by risk score."""
-        dfi = V2_TABLES['dtc_fleet_impact']
-        rows = _query_rows(
-            f'''
-            SELECT
-                dtc_code,
-                anyLast(system),
-                anyLast(subsystem),
-                sum(vehicles_affected),
-                sum(active_vehicles),
-                avg(avg_resolution_time),
-                avg(driver_related_ratio),
-                avg(fleet_risk_score)
-            FROM {dfi}
-            GROUP BY dtc_code
-            ORDER BY avg(fleet_risk_score) DESC
-            LIMIT %(limit)s
-            ''',
-            {'limit': int(limit)},
-        )
+        tenant = _tenant(info, "dtc:fleet:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["dtcs"].get_dtc_fleet_impact(tenant, limit=limit))
         return [
             DtcFleetImpact(
-                dtc_code=str(dc),
-                system=str(s or ''),
-                subsystem=str(ss or ''),
-                vehicles_affected=int(va),
-                active_vehicles=int(av),
-                avg_resolution_time=_safe_round(art, 1),
-                driver_related_ratio=_safe_round(drr, 3),
-                fleet_risk_score=_safe_round(frs, 2),
+                dtc_code=str(row["dtc_code"]),
+                system=str(row["system"] or ''),
+                subsystem=str(row["subsystem"] or ''),
+                vehicles_affected=int(row["vehicles_affected"] or 0),
+                active_vehicles=int(row["active_vehicles"] or 0),
+                avg_resolution_time=_safe_round(row["avg_resolution_time"], 1),
+                driver_related_ratio=_safe_round(row["driver_related_ratio"], 3),
+                fleet_risk_score=_safe_round(row["fleet_risk_score"], 2),
             )
-            for dc, s, ss, va, av, art, drr, frs in rows
+            for row in rows
         ]
 
     @strawberry.field
-    def dtc_cooccurrence(self, limit: int = 20, customer_name: Optional[str] = None) -> list[DtcCooccurrence]:
+    def dtc_cooccurrence(self, info: Info, limit: int = 20, customer_name: Optional[str] = None) -> list[DtcCooccurrence]:
         """Top DTC co-occurrence pairs."""
-        coo = V2_TABLES['dtc_cooccurrence']
-        rows = _query_rows(
-            f'''
-            SELECT
-                dtc_code_a,
-                dtc_code_b,
-                sum(cooccurrence_count),
-                sum(vehicles_affected),
-                avg(avg_time_gap_sec)
-            FROM {coo}
-            GROUP BY dtc_code_a, dtc_code_b
-            ORDER BY sum(cooccurrence_count) DESC
-            LIMIT %(limit)s
-            ''',
-            {'limit': int(limit)},
-        )
+        tenant = _tenant(info, "dtc:fleet:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["dtcs"].get_dtc_cooccurrence(tenant, limit=limit))
         return [
             DtcCooccurrence(
-                dtc_code_a=str(a),
-                dtc_code_b=str(b),
-                cooccurrence_count=int(cc),
-                vehicles_affected=int(va),
-                avg_time_gap_sec=_safe_round(atg, 1),
+                dtc_code_a=str(row["dtc_code_a"]),
+                dtc_code_b=str(row["dtc_code_b"]),
+                cooccurrence_count=int(row["cooccurrence_count"] or 0),
+                vehicles_affected=int(row["vehicles_affected"] or 0),
+                avg_time_gap_sec=_safe_round(row["avg_time_gap_sec"], 1),
             )
-            for a, b, cc, va, atg in rows
+            for row in rows
         ]
 
     @strawberry.field
-    def dtc_detail(self, dtc_code: str) -> DtcDetail | None:
+    def dtc_detail(self, info: Info, dtc_code: str) -> DtcDetail | None:
         """Rich detail for a single DTC code from dtc_master."""
-        dm = V2_TABLES['dtc_master']
-        rows = _query_rows(
-            f'''
-            SELECT
-                dtc_code, system, subsystem, description, severity_level,
-                primary_cause, symptoms, impact_if_unresolved,
-                fuel_mileage_impact, action_required, repair_complexity,
-                estimated_repair_hours, driver_related,
-                driver_behaviour_category, recommended_preventive_action
-            FROM {dm}
-            WHERE dtc_code = %(dtc_code)s
-            LIMIT 1
-            ''',
-            {'dtc_code': dtc_code},
-        )
+        tenant = _tenant(info, "dtc:schema:read")
+        rows = _rows(lambda: _repositories(info)["dtcs"].get_dtc_code_info(tenant, dtc_code=dtc_code))
         if not rows:
             return None
-        r = rows[0]
+        row = rows[0]
         return DtcDetail(
-            dtc_code=str(r[0]),
-            system=str(r[1] or ''),
-            subsystem=str(r[2] or ''),
-            description=str(r[3] or ''),
-            severity_level=int(r[4] or 1),
-            primary_cause=str(r[5] or ''),
-            symptoms=str(r[6] or ''),
-            impact_if_unresolved=str(r[7] or ''),
-            fuel_mileage_impact=str(r[8] or ''),
-            action_required=str(r[9] or ''),
-            repair_complexity=str(r[10] or ''),
-            estimated_repair_hours=_safe_float(r[11]),
-            driver_related=bool(r[12]),
-            driver_behaviour_category=str(r[13] or ''),
-            recommended_preventive_action=str(r[14] or ''),
+            dtc_code=str(row["dtc_code"]), system=str(row["system"] or ''),
+            subsystem=str(row["subsystem"] or ''), description=str(row["description"] or ''),
+            severity_level=int(row["severity_level"] or 1), primary_cause=str(row["primary_cause"] or ''),
+            symptoms=str(row["symptoms"] or ''), impact_if_unresolved=str(row["impact_if_unresolved"] or ''),
+            fuel_mileage_impact=str(row["fuel_mileage_impact"] or ''), action_required=str(row["action_required"] or ''),
+            repair_complexity=str(row["repair_complexity"] or ''), estimated_repair_hours=_safe_float(row["estimated_repair_hours"]),
+            driver_related=bool(row["driver_related"]), driver_behaviour_category=str(row["driver_behaviour_category"] or ''),
+            recommended_preventive_action=str(row["recommended_preventive_action"] or ''),
         )
 
     @strawberry.field
-    def vehicle_health_detail(self, uniqueid: str) -> VehicleHealthDetail | None:
+    def vehicle_health_detail(self, info: Info, uniqueid: str) -> VehicleHealthDetail | None:
         """Enhanced vehicle health with system flags."""
-        vhs = V2_TABLES['vehicle_health_summary']
-        rows = _query_rows(
-            f'''
-            SELECT
-                uniqueid, vehicle_number, customer_name,
-                vehicle_health_score, active_fault_count, critical_fault_count,
-                total_episodes, episodes_last_30_days, avg_resolution_time,
-                driver_related_faults, most_common_dtc,
-                has_engine_issue, has_emission_issue, has_safety_issue, has_electrical_issue
-            FROM {vhs}
-            WHERE uniqueid = %(uniqueid)s
-            LIMIT 1
-            ''',
-            {'uniqueid': uniqueid},
-        )
+        tenant = _tenant(info, "dtc:vehicle:read")
+        rows = _rows(lambda: _repositories(info)["vehicles"].get_vehicle_health(tenant, uniqueid=uniqueid))
         if not rows:
             return None
-        r = rows[0]
+        row = rows[0]
         return VehicleHealthDetail(
-            uniqueid=str(r[0]),
-            vehicle_number=str(r[1] or ''),
-            customer_name=str(r[2] or ''),
-            vehicle_health_score=_safe_float(r[3]),
-            active_fault_count=int(r[4]),
-            critical_fault_count=int(r[5]),
-            total_episodes=int(r[6]),
-            episodes_last_30_days=int(r[7]),
-            avg_resolution_time=_safe_round(r[8], 1),
-            driver_related_faults=int(r[9]),
-            most_common_dtc=str(r[10] or ''),
-            has_engine_issue=bool(r[11]),
-            has_emission_issue=bool(r[12]),
-            has_safety_issue=bool(r[13]),
-            has_electrical_issue=bool(r[14]),
+            uniqueid=str(row["uniqueid"]), vehicle_number=str(row["vehicle_number"] or ''),
+            customer_name=str(row["customer_name"] or ''), vehicle_health_score=_safe_float(row["vehicle_health_score"]),
+            active_fault_count=int(row["active_fault_count"] or 0), critical_fault_count=int(row["critical_fault_count"] or 0),
+            total_episodes=int(row["total_episodes"] or 0), episodes_last_30_days=int(row["episodes_last_30_days"] or 0),
+            avg_resolution_time=_safe_round(row["avg_resolution_time"], 1), driver_related_faults=int(row["driver_related_faults"] or 0),
+            most_common_dtc=str(row["most_common_dtc"] or ''), has_engine_issue=bool(row["has_engine_issue"]),
+            has_emission_issue=bool(row["has_emission_issue"]), has_safety_issue=bool(row["has_safety_issue"]),
+            has_electrical_issue=bool(row["has_electrical_issue"]),
         )
 
     @strawberry.field
-    def enhanced_maintenance(self, limit: int = 30, customer_name: Optional[str] = None) -> list[EnhancedMaintenanceRec]:
+    def enhanced_maintenance(self, info: Info, limit: int = 30, customer_name: Optional[str] = None) -> list[EnhancedMaintenanceRec]:
         """Maintenance priorities with scores and durations."""
-        mp = V2_TABLES['maintenance_priority']
-        vhs = V2_TABLES['vehicle_health_summary']
-        cn = customer_name or None
-        p: dict = {'limit': int(limit)}
-        c = ''
-        if cn:
-            p['_cust'] = cn
-            c = f" AND mp.uniqueid IN (SELECT uniqueid FROM {vhs} WHERE customer_name = %(_cust)s)"
-        rows = _query_rows(
-            f'''
-            SELECT
-                mp.uniqueid,
-                mp.vehicle_number,
-                mp.dtc_code,
-                mp.description,
-                mp.severity_level,
-                mp.fault_duration_sec,
-                mp.episodes_last_30_days,
-                mp.maintenance_priority_score,
-                mp.recommended_action
-            FROM {mp} mp
-            WHERE 1=1
-              {c}
-            ORDER BY mp.maintenance_priority_score DESC
-            LIMIT %(limit)s
-            ''',
-            p,
-        )
+        tenant = _tenant(info, "dtc:maintenance:read", customer_name)
+        rows = _rows(lambda: _repositories(info)["maintenance"].get_maintenance_priority(tenant, limit=limit))
         return [
             EnhancedMaintenanceRec(
-                uniqueid=str(uid),
-                vehicle_number=str(vn or ''),
-                dtc_code=str(dc),
-                description=str(desc or ''),
-                severity_level=int(sv),
-                fault_duration_sec=int(fds),
-                episodes_last_30_days=int(e30),
-                maintenance_priority_score=_safe_round(mps, 1),
-                recommended_action=str(ra) if ra else 'Schedule preventive maintenance.',
+                uniqueid=str(row["uniqueid"]), vehicle_number=str(row["vehicle_number"] or ''),
+                dtc_code=str(row["dtc_code"]), description=str(row["description"] or ''),
+                severity_level=int(row["severity_level"] or 0), fault_duration_sec=int(row["fault_duration_sec"] or 0),
+                episodes_last_30_days=int(row["episodes_last_30_days"] or 0),
+                maintenance_priority_score=_safe_round(row["maintenance_priority_score"], 1),
+                recommended_action=str(row["recommended_action"] or 'Schedule preventive maintenance.'),
             )
-            for uid, vn, dc, desc, sv, fds, e30, mps, ra in rows
+            for row in rows
         ]
 
 
-schema = strawberry.Schema(query=Query)
+schema = strawberry.Schema(query=Query, extensions=[TenantScopeExtension])

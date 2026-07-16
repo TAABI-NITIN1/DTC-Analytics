@@ -1,0 +1,35 @@
+{
+  "benchmark_version": "mcp-serving-fast-path-v1",
+  "scope": "Local deterministic fast-path microbenchmark; not a full-graph or production comparison.",
+  "historical_before": {
+    "source_run": "eval_20260520_085108_190cf6",
+    "turns": 895,
+    "average_latency_ms": 35271.7,
+    "p95_latency_ms": 73015.0,
+    "tokens_per_turn": 11998.31,
+    "tools_per_turn": 1.5553,
+    "sql_calls_per_turn": 1.6704,
+    "groundedness": 0.9045,
+    "single_turn_pass": 0.529,
+    "true_multi_turn_pass": "not_separately_reported",
+    "cost_per_successful_answer_usd": 0.013208,
+    "repeated_query_rate": "not_reported",
+    "mcp_error_rate": "not_applicable_pre_mcp"
+  },
+  "current_fast_path": {
+    "turns": 200,
+    "average_latency_ms": 0.0697,
+    "p95_latency_ms": 0.1548,
+    "tokens_per_turn": 0,
+    "tools_per_turn": 1.0,
+    "sql_calls_per_turn": 0,
+    "repeated_query_rate": 0,
+    "mcp_error_rate": 0,
+    "groundedness": 1.0,
+    "single_turn_pass": 1.0,
+    "true_multi_turn_pass": 1.0,
+    "cost_per_successful_answer_usd": 0
+  },
+  "comparison_validity": "The populations/environments differ. These numbers prove fast-path mechanics only; no end-to-end production improvement is claimed.",
+  "full_mcp_after": "pending approved ClickHouse, model, load environment, and shadow traffic"
+}

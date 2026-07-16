@@ -25,6 +25,10 @@ def get_vehicle_clickhouse_cfg():
     return _get_clickhouse_cfg('VEHICLE_CH_DB')
 
 
+def get_dtc_mcp_clickhouse_cfg():
+    return _get_clickhouse_cfg('DTC_MCP_CH_DB')
+
+
 def get_pipeline_cfg():
     return {
         'fetch_window_days': int(os.getenv('FETCH_WINDOW_DAYS') or 30),

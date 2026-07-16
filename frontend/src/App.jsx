@@ -34,12 +34,17 @@ function App() {
   const [showVehicleSuggestions, setShowVehicleSuggestions] = useState(false);
   const [activeVehicleSuggestionIndex, setActiveVehicleSuggestionIndex] = useState(-1);
   const [demoMode, setDemoMode] = useState(false);
+  const [fleetDashboardKpis, setFleetDashboardKpis] = useState(null);
   const vehicleSearchRef = useRef(null);
 
   // Reset to customer page when customer deselected
   useEffect(() => {
     if (!selectedCustomer) setActiveLevel('customer');
   }, [selectedCustomer]);
+
+  useEffect(() => {
+    if (activeLevel !== 'fleet') setFleetDashboardKpis(null);
+  }, [activeLevel]);
 
   // Fetch vehicles for selected customer (for dropdown)
   const { data: vehData, loading: vehiclesLoading } = useQuery(CUSTOMER_VEHICLES_QUERY, {
@@ -56,9 +61,11 @@ function App() {
   }, [vehicleSearchText]);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const loadRuntimeConfig = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/runtime-config`);
+        const res = await fetch(`${API_BASE}/api/runtime-config`, { signal: controller.signal });
         if (!res.ok) {
           return;
         }
@@ -70,6 +77,7 @@ function App() {
     };
 
     loadRuntimeConfig();
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -290,6 +298,7 @@ function App() {
             onSelectVehicle={handleVehicleSelect}
             onSelectDtc={handleDtcSelect}
             demoMode={demoMode}
+            onDashboardKpisChange={setFleetDashboardKpis}
           />
         ) : null}
         {activeLevel === 'dtc' ? (
@@ -325,6 +334,7 @@ function App() {
         customer_name: selectedCustomer || '',
         vehicle_number: customerVehicles.find(v => v.uniqueid === uniqueid)?.vehicleNumber || '',
         dtc_code: dtcCode || '',
+        ...(fleetDashboardKpis ? { dashboard_kpis: fleetDashboardKpis } : {}),
       }} demoMode={demoMode} />
     </div>
   );

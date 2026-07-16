@@ -432,7 +432,7 @@ Architecture:
   Intent detection → Structured tool calls → DTC knowledge retrieval →
   Diagnostic reasoning → Structured response with optional chart.
 
-Uses OpenAI function-calling with domain-specific analytics tools:
+Uses Anthropic Claude tool-calling with domain-specific analytics tools:
   1. get_fleet_health       — fleet-wide health snapshot
   2. get_fleet_dtc_distribution — top DTC codes across fleet
   3. get_fleet_trends       — fleet health trends over time
@@ -444,12 +444,13 @@ Uses OpenAI function-calling with domain-specific analytics tools:
   9. run_sql                — fallback raw SQL for advanced queries
   10. generate_chart        — structured chart config for frontend
 
-Env: OPENAI_API_KEY must be set.
+Env: ANTHROPIC_API_KEY must be set.
 """
 import concurrent.futures
 import json
 import logging
 import os
+import hashlib
 import re
 import socket
 import time
@@ -457,7 +458,7 @@ from typing import Annotated, TypedDict
 from urllib.parse import urlparse
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
@@ -467,10 +468,16 @@ from src.evaluation_agent import evaluate_trace
 from src.observability_store import try_persist_observability_run
 from src.persona import PERSONA_BANNED_PHRASES, SYSTEM_PERSONA, TAABI_IDENTITY_REPLY
 from src.schema_registry import SCHEMA_REGISTRY
+from src.dtc_mcp.client import MCPClientError, choose_data_route, invoke_tool as invoke_mcp_tool
+from src.dtc_mcp.config import DTCSettings
+from src.dtc_mcp.models import TenantContext
+from src.dtc_mcp.observability import record_metric
+from src.dtc_mcp.security import sign_conversation_state, tenant_scope_fingerprint
 from pathlib import Path
 
 log = logging.getLogger(__name__)
 _SQL_TRACE_CONTEXT = threading.local()
+DEFAULT_AI_ANALYST_MODEL = "claude-haiku-4-5-20251001"
 
 # ── Observability: MLflow (experiment metrics) ──────────────────
 try:
@@ -534,7 +541,7 @@ def _get_rag_snippets(context: dict | None = None, max_chars: int = 1000) -> str
 # Bump a version string whenever you edit a prompt to track performance
 # changes in MLflow. Format: "v<major>" (e.g. "v2" after a major rewrite).
 PROMPT_VERSIONS = {
-    "system":         "v1",
+    "system":         "v2",
     "intent":         "v1",
     "investigate":    "v1",
     "fault_analysis": "v1",
@@ -552,7 +559,7 @@ def _build_version_metadata() -> dict:
         'service_version': os.getenv('AI_ANALYST_SERVICE_VERSION', ''),
         'git_commit': os.getenv('GIT_COMMIT_SHA', ''),
         'env_name': os.getenv('DEPLOYMENT_ENV', os.getenv('ENV_NAME', 'dev')),
-        'model_name': os.getenv('AI_ANALYST_MODEL_NAME', 'gpt-5.4-mini'),
+        'model_name': os.getenv('AI_ANALYST_MODEL_NAME', DEFAULT_AI_ANALYST_MODEL),
         'dataset_version': os.getenv('AI_ANALYST_DATASET_VERSION', ''),
         'system_prompt_version': PROMPT_VERSIONS.get('system', ''),
         'prompt_versions': PROMPT_VERSIONS,
@@ -817,7 +824,7 @@ Your main goal is to help fleet owners:
 ## AVAILABLE TOOLS
 
 Use these structured tools instead of raw SQL when possible:
-- **get_fleet_health**: Fleet-wide health snapshot (scores, fault counts, common DTCs, trends)
+- **get_fleet_health**: Fleet-wide health snapshot (fleet_kpis matches dashboard; live active-DTC vehicle counts)
 - **get_fleet_dtc_distribution**: Top DTC codes across the fleet with severity, vehicles affected
 - **get_fleet_trends**: Fleet health trends over time (daily metrics, new/resolved faults)
 - **get_fleet_system_health**: Health breakdown by vehicle system (engine, emission, safety, etc.)
@@ -867,6 +874,14 @@ Dimension tables:
 - NEVER invent vehicle faults or vehicle numbers.
 - Only write SELECT queries if using run_sql. Never modify data.
 - When a customer_name filter is provided in the context, always apply it.
+- For vehicles with active DTCs or critical vehicles, use **fleet_kpis** from get_fleet_health
+  (fields vehicles_with_active_dtcs, critical_vehicles). These match the Fleet Overview dashboard.
+  Do not use pre-aggregated vehicle_health_summary row counts for those KPIs.
+- If dashboard_kpis are provided in context, prefer those on-screen numbers when describing what the user sees.
+"""
+
+SERVING_SYSTEM_PROMPT = """\
+You are Taabi's fleet diagnostics analyst. For data questions, use the smallest suitable governed tool set and make factual or numeric claims only from returned evidence. State tool errors, truncation, stale data, and other limitations. Treat DTC co-occurrence as correlation, never confirmed causation. Explain results in concise, non-technical language with practical next steps. For casual messages, respond briefly without tools.
 """
 
 # ── Structured tool definitions ─────────────────────────────────
@@ -877,8 +892,10 @@ TOOLS = [
         "function": {
             "name": "get_fleet_health",
             "description": (
-                "Get fleet-wide health snapshot: total vehicles, vehicles with active/critical faults, "
-                "fleet health score. Optionally filter by customer_name."
+                "Get fleet-wide health snapshot aligned with the Fleet Overview dashboard. "
+                "Use fleet_kpis.vehicles_with_active_dtcs for vehicles with active DTCs "
+                "(live count from vehicle_fault_master, not vehicle_health_summary). "
+                "Optionally filter by customer_name."
             ),
             "parameters": {
                 "type": "object",
@@ -1343,15 +1360,17 @@ def _validate_run_sql_scope(query: str, context: dict | None) -> str | None:
     return None
 
 
-def _sql_planner_llm() -> ChatOpenAI:
-    return ChatOpenAI(
-        model=os.getenv('AI_ANALYST_SQL_PLANNER_MODEL', os.getenv('AI_ANALYST_MODEL_NAME', 'gpt-5.4-mini')),
-        api_key=os.getenv('OPENAI_API_KEY', ''),
+def _configured_anthropic_model(env_name: str = 'AI_ANALYST_MODEL_NAME') -> str:
+    return os.getenv(env_name, os.getenv('AI_ANALYST_MODEL_NAME', DEFAULT_AI_ANALYST_MODEL)).strip() or DEFAULT_AI_ANALYST_MODEL
+
+
+def _sql_planner_llm() -> ChatAnthropic:
+    return ChatAnthropic(
+        model=_configured_anthropic_model('AI_ANALYST_SQL_PLANNER_MODEL'),
+        api_key=os.getenv('ANTHROPIC_API_KEY', ''),
         temperature=0.0,
         timeout=60,
-        model_kwargs={
-            'max_completion_tokens': 700,
-        },
+        max_tokens=700,
     )
 
 
@@ -1636,6 +1655,16 @@ class AgentState(TypedDict):
     sql_events: list                     # captured SQL events with node/tool attribution
     metrics: dict                        # per-node deterministic metrics
     version: dict                        # version metadata copied to traces
+    active_customer_scope: str
+    active_vehicle: str
+    active_dtc: str
+    active_time_range: dict
+    last_intent: str
+    last_tool: str
+    last_evidence: dict
+    last_result_hash: str
+    confirmed_facts: list
+    open_question: str
 
 
 # ── Read-only SQL guard ─────────────────────────────────────────
@@ -1748,59 +1777,76 @@ def _safe_exec(query: str, params: dict | None = None) -> dict:
 
 # ── Structured tool implementations ────────────────────────────
 
+def _tool_result_first_row(result: dict) -> dict:
+    """Return the first row dict from a _safe_exec result, or {}."""
+    if not isinstance(result, dict) or result.get('error'):
+        return {}
+    rows = result.get('data') or []
+    if not rows or not isinstance(rows[0], dict):
+        return {}
+    return rows[0]
+
+
 def _tool_get_fleet_health(args: dict) -> dict:
+    """Fleet health aligned with GraphQL fleetKpis (live fault-master vehicle counts)."""
     customer = str(args.get('customer_name', '') or '').strip()
     days = _safe_int(args.get('days', 30), default=30, min_value=1, max_value=365)
-    params = {'customer_name': customer, 'days': days}
+    params = {'customer_name': customer, 'days': days} if customer else {'days': days}
 
-    summary_query = """
+    vhs_where = ' WHERE customer_name = %(customer_name)s' if customer else ''
+    vhs = _safe_exec(
+        f"""
         SELECT
-            count() as total_vehicles,
-            sumIf(1, active_fault_count > 0) as vehicles_with_active_faults,
-            sumIf(1, critical_fault_count > 0) as vehicles_with_critical_faults,
-            round(avg(vehicle_health_score), 1) as avg_health_score,
-            sum(active_fault_count) as total_active_faults,
-            sum(critical_fault_count) as total_critical_faults,
-            sum(driver_related_faults) as total_driver_related_faults
+            count() AS total_vehicles,
+            round(avg(vehicle_health_score), 1) AS fleet_health_score,
+            sum(active_fault_count) AS total_active_fault_episodes,
+            sum(critical_fault_count) AS total_critical_fault_episodes,
+            sum(driver_related_faults) AS total_driver_related_faults
         FROM vehicle_health_summary_ravi_v2
-    """
-    if customer:
-        summary_query += '\n        WHERE customer_name = %(customer_name)s\n'
-    summary = _safe_exec(summary_query, params=params if customer else None)
+        {vhs_where}
+        """,
+        params=params if customer else None,
+    )
 
-    if customer:
-        snap = _safe_exec(
-            """
-            SELECT
-                uniqExact(uniqueid) as total_vehicles,
-                uniqExactIf(uniqueid, is_resolved = 0) as vehicles_with_active_faults,
-                uniqExactIf(uniqueid, is_resolved = 0 AND severity_level >= 3) as vehicles_with_critical_faults,
-                countIf(driver_related = 1) as driver_related_faults,
-                topKWeighted(1)(dtc_code, occurrence_count)[1] as most_common_dtc,
-                topKWeighted(1)(system, occurrence_count)[1] as most_common_system
-            FROM vehicle_fault_master_ravi_v2
-            WHERE customer_name = %(customer_name)s
-            """,
-            params=params,
-        )
-    else:
-        snap = _safe_exec("""
-            SELECT total_vehicles, vehicles_with_active_faults,
-                   vehicles_with_critical_faults, driver_related_faults,
-                   fleet_health_score, most_common_dtc, most_common_system,
-                   active_fault_trend
-            FROM fleet_health_summary_ravi_v2
-            LIMIT 1
-        """)
+    live_where = ' WHERE customer_name = %(customer_name)s' if customer else ''
+    live = _safe_exec(
+        f"""
+        SELECT
+            uniqExactIf(uniqueid, is_resolved = 0) AS vehicles_with_active_dtcs,
+            uniqExactIf(uniqueid, is_resolved = 0 AND severity_level >= 3) AS critical_vehicles,
+            countIf(driver_related = 1 AND is_resolved = 0) AS driver_related_faults,
+            topKWeighted(1)(dtc_code, occurrence_count)[1] AS most_common_dtc,
+            topKWeighted(1)(system, occurrence_count)[1] AS most_common_system
+        FROM vehicle_fault_master_ravi_v2
+        {live_where}
+        """,
+        params=params if customer else None,
+    )
+
+    vhs_row = _tool_result_first_row(vhs)
+    live_row = _tool_result_first_row(live)
+
+    fleet_kpis = {
+        'total_vehicles': vhs_row.get('total_vehicles'),
+        'vehicles_with_active_dtcs': live_row.get('vehicles_with_active_dtcs'),
+        'critical_vehicles': live_row.get('critical_vehicles'),
+        'fleet_health_score': vhs_row.get('fleet_health_score'),
+        'total_active_fault_episodes': vhs_row.get('total_active_fault_episodes'),
+        'total_critical_fault_episodes': vhs_row.get('total_critical_fault_episodes'),
+        'driver_related_faults': live_row.get('driver_related_faults'),
+        'most_common_dtc': live_row.get('most_common_dtc'),
+        'most_common_system': live_row.get('most_common_system'),
+        '_count_source': 'vehicle_fault_master_ravi_v2 (matches Fleet Overview dashboard)',
+    }
 
     if customer:
         trend = _safe_exec(
             """
             SELECT
-                event_date as date,
-                count() as active_faults,
-                countIf(is_resolved = 1) as resolved_faults,
-                countIf(driver_related = 1) as driver_related_faults
+                event_date AS date,
+                count() AS active_faults,
+                countIf(is_resolved = 1) AS resolved_faults,
+                countIf(driver_related = 1) AS driver_related_faults
             FROM vehicle_fault_master_ravi_v2
             WHERE customer_name = %(customer_name)s
               AND event_date >= today() - %(days)s
@@ -1818,7 +1864,15 @@ def _tool_get_fleet_health(args: dict) -> dict:
             ORDER BY date DESC
             LIMIT 7
         """)
-    return {"summary": summary, "fleet_snapshot": snap, "recent_trend": trend}
+
+    fleet_kpis_payload = {'data': [fleet_kpis], 'count': 1}
+    return {
+        'fleet_kpis': fleet_kpis_payload,
+        # Legacy keys: same canonical counts (avoids LLM picking stale summary totals)
+        'summary': fleet_kpis_payload,
+        'fleet_snapshot': fleet_kpis_payload,
+        'recent_trend': trend,
+    }
 
 
 def _tool_get_fleet_dtc_distribution(args: dict) -> dict:
@@ -2128,29 +2182,25 @@ _TOOL_HANDLERS = {
 
 # ── Shared LLM factory ───────────────────────────────────────────
 
-def _reasoning_llm() -> ChatOpenAI:
+def _reasoning_llm() -> ChatAnthropic:
     """LLM for reasoning nodes — no tools bound."""
-    return ChatOpenAI(
-        model='gpt-5.4-mini',
-        api_key=os.getenv('OPENAI_API_KEY', ''),
+    return ChatAnthropic(
+        model=_configured_anthropic_model(),
+        api_key=os.getenv('ANTHROPIC_API_KEY', ''),
         temperature=0.2,
         timeout=60,
-        model_kwargs={
-            'max_completion_tokens': 800,
-        },
+        max_tokens=800,
     )
 
 
-def _tools_llm() -> ChatOpenAI:
+def _tools_llm() -> ChatAnthropic:
     """LLM for data-investigation node — tools bound."""
-    return ChatOpenAI(
-        model='gpt-5.4-mini',
-        api_key=os.getenv('OPENAI_API_KEY', ''),
+    return ChatAnthropic(
+        model=_configured_anthropic_model(),
+        api_key=os.getenv('ANTHROPIC_API_KEY', ''),
         temperature=0.1,
         timeout=60,
-        model_kwargs={
-            'max_completion_tokens': 800,
-        },
+        max_tokens=800,
     ).bind_tools(TOOLS)
 
 
@@ -2244,6 +2294,12 @@ def _node_build_context(state: AgentState) -> dict:
         hints.append(f"Focus on DTC code: {_sanitize_prompt_text(ctx['dtc_code'], 120)}")
     if ctx.get('mode'):
         hints.append(f"Dashboard page context: {_sanitize_prompt_text(ctx['mode'], 80)}")
+    dashboard_kpis = ctx.get('dashboard_kpis')
+    if isinstance(dashboard_kpis, dict) and dashboard_kpis:
+        hints.append(
+            'Dashboard KPIs currently on screen (use for counts shown to the user): '
+            + json.dumps(dashboard_kpis, default=str)[:600]
+        )
     ctx['_scope_hints'] = hints
     return {'context': ctx, 'nodes_executed': nodes_exec}
 
@@ -2251,6 +2307,116 @@ def _node_build_context(state: AgentState) -> dict:
 # ─────────────────────────────────────────────────────────────────
 # Node 3 — Investigate Data (internal tool-calling mini-loop)
 # ─────────────────────────────────────────────────────────────────
+
+_MCP_TOOL_MAP = {
+    'get_fleet_health': 'get_fleet_health_summary',
+    'get_fleet_dtc_distribution': 'get_top_dtcs',
+    'get_fleet_trends': 'get_fault_trends',
+    'get_vehicle_health': 'get_vehicle_health',
+    'get_vehicle_faults': 'get_vehicle_faults',
+    'get_dtc_details': 'get_dtc_code_info',
+    'get_dtc_cooccurrence': 'get_dtc_cooccurrence',
+    'get_maintenance_priority': 'get_maintenance_priority',
+    'get_dtc_fleet_impact': 'get_dtc_fleet_impact',
+    'run_sql': 'run_validated_dtc_sql',
+}
+
+
+def _agent_tenant_context(context: dict) -> TenantContext:
+    raw = context.get('_dtc_tenant_context')
+    if not raw:
+        raise MCPClientError('Authenticated tenant context is required for MCP mode')
+    return raw if isinstance(raw, TenantContext) else TenantContext.model_validate(raw)
+
+
+def _mcp_arguments(fn_name: str, args: dict, user_query: str) -> dict:
+    safe = {key: value for key, value in args.items() if key not in {'customer', 'customer_id', 'customer_name', 'tenant', 'tenant_id', 'clientLoginId', 'allowed_customer_ids'}}
+    if fn_name == 'get_fleet_health':
+        return {}
+    if fn_name == 'get_fleet_dtc_distribution':
+        return {'limit': safe.get('limit', 10)}
+    if fn_name == 'get_fleet_trends':
+        return {'days': safe.get('days', 30), 'limit': min(int(safe.get('limit', 200)), 200)}
+    if fn_name == 'get_dtc_details':
+        codes = safe.get('dtc_codes') or []
+        return {'dtc_code': str(codes[0])} if codes else {}
+    if fn_name == 'run_sql':
+        return {'question_or_reason': user_query or 'custom analytics question', 'sql': safe.get('query', ''), 'maximum_rows': min(int(safe.get('maximum_rows', 200)), 200)}
+    return safe
+
+
+def _invoke_mcp_analyst_tool(fn_name: str, args: dict, context: dict, user_query: str) -> dict:
+    mapped = _MCP_TOOL_MAP.get(fn_name)
+    if not mapped:
+        return {'error': f'{fn_name} is not available in the initial MCP domain-tool set.'}
+    try:
+        settings = DTCSettings.from_env()
+        tenant = _agent_tenant_context(context)
+        arguments = _mcp_arguments(fn_name, args, user_query)
+        arguments_hash = hashlib.sha256(json.dumps(arguments, sort_keys=True, default=str).encode()).hexdigest()
+        prior = context.get('_dtc_conversation_state') if isinstance(context.get('_dtc_conversation_state'), dict) else {}
+        reusable = bool(
+            context.get('_dtc_conversation_state_verified') is True
+            and prior.get('active_customer_scope') == tenant_scope_fingerprint(tenant)
+            and prior.get('last_tool') == mapped
+            and prior.get('last_arguments_hash') == arguments_hash
+            and isinstance(prior.get('last_response'), dict)
+            and prior['last_response'].get('ok')
+            and prior['last_response'].get('evidence')
+        )
+        route = choose_data_route(
+            reusable_evidence=reusable,
+            domain_tool=mapped if fn_name != 'run_sql' else None,
+            needs_metadata=False,
+            dynamic_sql_enabled=settings.dynamic_sql_enabled,
+        )
+        if route == 'reuse_evidence':
+            response = dict(prior['last_response'])
+            response['limitations'] = list(response.get('limitations') or ()) + ['Reused previously verified evidence from this tenant-scoped conversation.']
+            response['_reused_evidence'] = True
+        elif route in {'domain_tool', 'validated_sql'}:
+            response = invoke_mcp_tool(settings, tenant, mapped, arguments).model_dump(mode='json')
+        else:
+            return {'error': 'No governed data route is available for this request.', 'code': 'QUERY_REJECTED'}
+        response['_tool_name'] = mapped
+        response['_arguments_hash'] = arguments_hash
+        return response
+    except Exception:
+        return {'error': 'The governed DTC analytics service is unavailable.', 'code': 'UPSTREAM_UNAVAILABLE'}
+
+
+def _conversation_state(final_state: dict, context: dict) -> dict:
+    tenant = _agent_tenant_context(context)
+    tool_results = final_state.get('tool_results') if isinstance(final_state.get('tool_results'), dict) else {}
+    latest = next((value for value in reversed(list(tool_results.values())) if isinstance(value, dict) and value.get('_tool_name') and value.get('evidence')), None)
+    prior = context.get('_dtc_conversation_state') if isinstance(context.get('_dtc_conversation_state'), dict) else {}
+    if latest is None:
+        return prior
+    evidence = latest.get('evidence') or {}
+    response = {key: value for key, value in latest.items() if not key.startswith('_')}
+    return {
+        'active_customer_scope': tenant_scope_fingerprint(tenant),
+        'active_vehicle': str(context.get('uniqueid') or context.get('vehicle_number') or ''),
+        'active_dtc': str(context.get('dtc_code') or ''),
+        'active_time_range': evidence.get('query_window'),
+        'last_intent': str(final_state.get('intent') or ''),
+        'last_tool': latest['_tool_name'],
+        'last_evidence': evidence,
+        'last_result_hash': hashlib.sha256(json.dumps(response, sort_keys=True, default=str).encode()).hexdigest(),
+        'confirmed_facts': list(response.get('data') or [])[:20] if isinstance(response.get('data'), list) else [],
+        'open_question': '',
+        'last_arguments_hash': latest['_arguments_hash'],
+        'last_response': response,
+    }
+
+
+def _normalized_shadow_hash(value: dict) -> str:
+    payload = dict(value or {})
+    evidence = payload.get('evidence')
+    if isinstance(evidence, dict):
+        payload['evidence'] = {key: item for key, item in evidence.items() if key not in {'duration_ms', 'as_of', 'trace_id'}}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
+
 
 def _run_tool_calls_parallel(
     tool_calls: list,
@@ -2271,6 +2437,7 @@ def _run_tool_calls_parallel(
         req_id = request_id
         customer_name = fn_args.get('customer_name', None)
         thread_name = threading.current_thread().name
+        access_mode = str(context.get('_dtc_data_access_mode') or os.getenv('DTC_DATA_ACCESS_MODE', 'direct')).strip().lower()
         log.info(f"[{req_id}] [TOOL CALL] {fn_name} | args={fn_args} | customer={customer_name} | thread={thread_name}")
         try:
             _SQL_TRACE_CONTEXT.request_id = req_id
@@ -2290,10 +2457,34 @@ def _run_tool_calls_parallel(
                     'yKeys': fn_args.get('y_keys', []),
                 }
                 result = {'status': 'chart_created', 'note': 'Chart will render in the UI.'}
+            elif access_mode == 'mcp' and (fn_name in _TOOL_HANDLERS or fn_name == 'run_sql'):
+                result = _invoke_mcp_analyst_tool(fn_name, fn_args, context, user_query)
+                if isinstance(result, dict) and result.get('error') and os.getenv('DTC_MCP_DIRECT_FALLBACK_ENABLED', 'false').strip().lower() in {'1', 'true', 'yes', 'on'} and fn_name in _TOOL_HANDLERS:
+                    try:
+                        tenant_context = _agent_tenant_context(context)
+                    except MCPClientError:
+                        tenant_context = None
+                    if tenant_context is not None:
+                        trusted_args = dict(fn_args)
+                        trusted_args['customer_name'] = str(context.get('_trusted_customer_name') or '')
+                        result = _TOOL_HANDLERS[fn_name](trusted_args)
+                        if isinstance(result, dict):
+                            result['_fallback'] = 'explicit_direct'
+                            result['_request_id'] = tenant_context.request_id
+                            result['_trace_id'] = tenant_context.trace_id
+                            record_metric('mcp_fallback_total')
+                if isinstance(result, dict) and isinstance(result.get('data'), list):
+                    local_data = result['data']
             elif fn_name == 'run_sql':
                 query = str(fn_args.get('query', '') or '')
                 err = _validate_sql(query) or _validate_run_sql_scope(query, context)
                 result = {'error': err} if err else _safe_exec(query)
+                if access_mode == 'shadow':
+                    shadow_result = _invoke_mcp_analyst_tool(fn_name, fn_args, context, user_query)
+                    matched = _normalized_shadow_hash(result) == _normalized_shadow_hash(shadow_result)
+                    record_metric('shadow_comparisons_total')
+                    record_metric('shadow_mismatches_total', int(not matched))
+                    log.info('[%s] [MCP SHADOW] tool=%s match=%s', req_id, fn_name, matched)
                 if isinstance(result, dict) and 'data' in result and result['data']:
                     local_data = result['data']
             elif fn_name in _TOOL_HANDLERS:
@@ -2318,6 +2509,12 @@ def _run_tool_calls_parallel(
                         user_query=user_query,
                         context=context,
                     )
+                if access_mode == 'shadow':
+                    shadow_result = _invoke_mcp_analyst_tool(fn_name, fn_args, context, user_query)
+                    matched = _normalized_shadow_hash(result) == _normalized_shadow_hash(shadow_result)
+                    record_metric('shadow_comparisons_total')
+                    record_metric('shadow_mismatches_total', int(not matched))
+                    log.info('[%s] [MCP SHADOW] tool=%s match=%s', req_id, fn_name, matched)
                 log.info(f"[{req_id}] [TOOL RESULT] {fn_name} | rows={len(result.get('data', [])) if isinstance(result, dict) and 'data' in result else 'NA'} | customer={customer_name} | thread={thread_name}")
                 if isinstance(result, dict) and 'data' in result and result['data']:
                     local_data = result['data']
@@ -2398,8 +2595,9 @@ def _node_investigate_data(state: AgentState) -> dict:
 
     system = _INVESTIGATE_PROMPT.format(scope_hints=scope_hints)
     # load small RAG snippets to help the tool choose the minimal set of calls
-    rag = _get_rag_snippets(ctx)
-    system = _INVESTIGATE_PROMPT_WITH_RAG.format(scope_hints=scope_hints, rag_snippets=rag)
+    if str(ctx.get('_dtc_data_access_mode') or '') != 'mcp':
+        rag = _get_rag_snippets(ctx)
+        system = _INVESTIGATE_PROMPT_WITH_RAG.format(scope_hints=scope_hints, rag_snippets=rag)
     local_messages: list = [
         SystemMessage(content=system),
         HumanMessage(content=user_text),
@@ -2446,7 +2644,12 @@ def _node_investigate_data(state: AgentState) -> dict:
     # Failure detection
     if not accumulated:
         # Deterministic fallback so downstream reasoning has minimum evidence.
-        fallback_result = _tool_get_fleet_health({'customer_name': ctx.get('customer_name', '')})
+        access_mode = str(ctx.get('_dtc_data_access_mode') or os.getenv('DTC_DATA_ACCESS_MODE', 'direct')).strip().lower()
+        fallback_result = (
+            _invoke_mcp_analyst_tool('get_fleet_health', {}, ctx, user_text)
+            if access_mode == 'mcp'
+            else _tool_get_fleet_health({'customer_name': ctx.get('customer_name', '')})
+        )
         if isinstance(fallback_result, dict) and 'error' not in fallback_result:
             accumulated['heuristic_fallback_get_fleet_health'] = fallback_result
             current_data = fallback_result.get('data', current_data) if isinstance(fallback_result.get('data'), list) else current_data
@@ -2465,6 +2668,9 @@ def _node_investigate_data(state: AgentState) -> dict:
         'token_usage':    tok,
         'tools_used':     tools_used,
         'sql_events':     sql_events,
+        'last_tool':      tools_used[-1] if tools_used else '',
+        'last_evidence':  next((value.get('evidence') for value in reversed(list(accumulated.values())) if isinstance(value, dict) and isinstance(value.get('evidence'), dict)), {}),
+        'last_result_hash': _normalized_shadow_hash(accumulated),
     }
 
 
@@ -2682,8 +2888,13 @@ Your task: Write a clear, helpful, actionable response in professional but non-t
 Rules:
 - If a structured recommendation is provided, include the Problem/Cause/Impact/Action sections clearly formatted.
 - If this is a summary-type question (fleet health, trends), focus on key metrics and insights.
+- For fleet vehicle counts, use fleet_kpis.vehicles_with_active_dtcs and fleet_kpis.critical_vehicles
+  (or dashboard_kpis from context). Never cite a different active-vehicle count from other tool fields.
 - Format numbers with commas (e.g. 1,234 not 1234).
 - Highlight critical findings visually (use **bold** for numbers and key terms).
+- Make numeric claims only when they appear in the evidence summary.
+- Disclose tool errors, truncated results, cached/stale analytics, and empty evidence.
+- Describe co-occurrence as correlation, never as confirmed causation.
 - End with 1-2 specific next-step suggestions.
 - Do NOT say "based on the data provided" or "as an AI" — you are a diagnostics expert.
 """
@@ -2701,6 +2912,49 @@ def _build_prompt_catalog() -> dict:
         'recommendation': _RECOMMENDATION_PROMPT,
         'explain': _EXPLAIN_PROMPT,
     }
+
+
+def _compact_tool_evidence(tool_results: object) -> dict:
+    """Keep enough governed evidence to answer without replaying full tool payloads."""
+    if not isinstance(tool_results, dict):
+        return {}
+
+    def compact_value(value: object) -> object:
+        if isinstance(value, str):
+            return value[:240]
+        if isinstance(value, (int, float, bool)) or value is None:
+            return value
+        return str(value)[:240]
+
+    summary: dict[str, dict] = {}
+    for call_id, result in list(tool_results.items())[-6:]:
+        if not isinstance(result, dict):
+            continue
+        evidence = result.get('evidence') if isinstance(result.get('evidence'), dict) else {}
+        rows = result.get('data') if isinstance(result.get('data'), list) else []
+        if not rows:
+            for nested_key in ('fleet_kpis', 'summary', 'fleet_snapshot', 'recent_trend', 'fault_summary'):
+                nested = result.get(nested_key)
+                nested_rows = nested.get('data') if isinstance(nested, dict) and isinstance(nested.get('data'), list) else []
+                if nested_rows:
+                    rows = nested_rows
+                    break
+        representative_rows = []
+        for row in rows[:3]:
+            if isinstance(row, dict):
+                representative_rows.append({str(key): compact_value(value) for key, value in list(row.items())[:12]})
+        summary[str(call_id)] = {
+            'tool': result.get('_tool_name') or result.get('tool_name'),
+            'status': result.get('status') or ('error' if result.get('error') else 'success'),
+            'row_count': result.get('row_count', len(rows)),
+            'truncated': bool(result.get('truncated') or evidence.get('truncated')),
+            'freshness': evidence.get('data_freshness'),
+            'query_hash': evidence.get('query_hash'),
+            'limitations': list(result.get('limitations') or [])[:3],
+            'error': compact_value(result.get('error')) if result.get('error') else None,
+            'representative_rows': representative_rows,
+        }
+    return summary
 
 def _node_explain(state: AgentState) -> dict:
     """Node 8 — Final response generation"""
@@ -2732,7 +2986,7 @@ def _node_explain(state: AgentState) -> dict:
     nodes_exec = list(state.get('nodes_executed') or []) + ['explain']
     failures   = list(state.get('failure_reasons') or [])
 
-    tool_summary = json.dumps(state.get('tool_results', {}), default=str)[:3000]
+    tool_summary = json.dumps(_compact_tool_evidence(state.get('tool_results', {})), default=str)[:3000]
     parts = [f"User Question: {user_text}\n\nFetched Data Summary:\n{tool_summary}"]
 
     # Evidence threshold guard: avoid fabricated conclusions when retrieval evidence is too weak.
@@ -2742,7 +2996,7 @@ def _node_explain(state: AgentState) -> dict:
         if isinstance(value, dict) and 'error' not in value:
             if isinstance(value.get('data'), list) and len(value.get('data')) > 0:
                 evidence_count += 1
-            elif any(k in value for k in ['summary', 'fleet_snapshot', 'recent_trend', 'status', 'fault_summary']):
+            elif any(k in value for k in ['fleet_kpis', 'summary', 'fleet_snapshot', 'recent_trend', 'status', 'fault_summary']):
                 evidence_count += 1
     if intent != 'casual_conversation' and evidence_count == 0:
         failures.append('insufficient_evidence')
@@ -2871,19 +3125,48 @@ agent_graph = _agent_graph
 
 # ── Main chat function ──────────────────────────────────────────
 
-def chat(messages: list[dict], context: dict | None = None) -> dict:
+_POST_RESPONSE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix='ai-post-response')
+
+
+def _evaluation_sampled(request_id: str) -> bool:
+    try:
+        rate = min(1.0, max(0.0, float(os.getenv('AI_ANALYST_EVAL_SAMPLE_RATE', '0.1'))))
+    except ValueError:
+        rate = 0.1
+    bucket = int(hashlib.sha256(request_id.encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
+    return bucket < rate
+
+
+def _post_response_work(*, api_key: str, query: str, trace_log: list, answer: str, payload: dict, sampled: bool, persist: bool) -> None:
+    completed = dict(payload)
+    if sampled:
+        completed['evaluation'] = evaluate_trace(api_key=api_key, query=query, trace_log=trace_log, final_answer=answer, model_name=os.getenv('AI_ANALYST_EVAL_MODEL', 'gpt-4o-mini'), timeout=int(os.getenv('AI_ANALYST_EVAL_TIMEOUT_SEC', '45')))
+    if persist:
+        try_persist_observability_run(query=query, payload=completed)
+
+
+def _schedule_post_response_work(**kwargs) -> bool:
+    try:
+        _POST_RESPONSE_EXECUTOR.submit(_post_response_work, **kwargs)
+        return True
+    except Exception as exc:
+        log.warning('Post-response evaluation scheduling failed: %s', exc)
+        return False
+
+
+def _chat_with_configured_data_access(messages: list[dict], context: dict | None = None) -> dict:
     """
     Process a conversation and return {"text": "...", "chart": {...}|null}.
     messages: list of {"role": "user"|"assistant", "content": "..."}
     context: optional {"mode": "fleet"|"vehicle"|"dtc", "customer_name": "...",
              "vehicle_number": "...", "dtc_code": "..."}
     """
-    api_key = os.getenv('OPENAI_API_KEY', '')
+    api_key = os.getenv('ANTHROPIC_API_KEY', '')
     if not api_key:
-        return {'text': 'OpenAI API key is not configured. Set OPENAI_API_KEY in .env.', 'chart': None}
+        return {'text': 'Anthropic API key is not configured. Set ANTHROPIC_API_KEY in .env.', 'chart': None}
 
     # Convert incoming dicts to LangChain message types
-    lc_messages: list = [SystemMessage(content=f"{SYSTEM_PERSONA}\n\n{SYSTEM_PROMPT}")]
+    lc_messages: list = [SystemMessage(content=f"{SYSTEM_PERSONA}\n\n{SERVING_SYSTEM_PROMPT}")]
     for msg in messages:
         role = msg.get('role', 'user')
         content = msg.get('content', '')
@@ -2916,6 +3199,16 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
         'sql_events':                    [],
         'metrics':                       {},
         'version':                       version_for_persistence,
+        'active_customer_scope':         str((context or {}).get('_trusted_customer_name') or ''),
+        'active_vehicle':                str((context or {}).get('vehicle_number') or ''),
+        'active_dtc':                    str((context or {}).get('dtc_code') or ''),
+        'active_time_range':             dict((context or {}).get('time_range') or {}),
+        'last_intent':                   '',
+        'last_tool':                     '',
+        'last_evidence':                 {},
+        'last_result_hash':              '',
+        'confirmed_facts':               [],
+        'open_question':                 '',
     }
 
     t0 = time.time()
@@ -3023,15 +3316,6 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
             break
 
     trace_log = final_state.get('trace_log', [])
-    evaluation = evaluate_trace(
-        api_key=api_key,
-        query=eval_query,
-        trace_log=trace_log if isinstance(trace_log, list) else [],
-        final_answer=text,
-        model_name=os.getenv('AI_ANALYST_EVAL_MODEL', 'gpt-4o-mini'),
-        timeout=int(os.getenv('AI_ANALYST_EVAL_TIMEOUT_SEC', '45')),
-    )
-
     aggregated_node_metrics = _collect_node_metrics_from_trace(trace_log if isinstance(trace_log, list) else [])
     tool_results = final_state.get('tool_results') if isinstance(final_state.get('tool_results'), dict) else {}
     planner_events = _collect_sql_planner_events_from_tool_results(
@@ -3055,14 +3339,98 @@ def chat(messages: list[dict], context: dict | None = None) -> dict:
         'trace_log':       trace_log,
         'sql_events':      final_state.get('sql_events', []),
         'sql_planner_events': planner_events,
-        'evaluation':      evaluation,
+        'evaluation':      {'status': 'queued' if _evaluation_sampled(str(final_state.get('request_id') or '')) else 'not_sampled'},
         'request_id':      final_state.get('request_id', None),
         'version':         version_meta,
     }
+    if str((context or {}).get('_dtc_data_access_mode') or '') in {'mcp', 'shadow'} and (context or {}).get('_dtc_tenant_context'):
+        response_payload['conversation_state'] = _conversation_state(final_state, context or {})
+        response_payload['conversation_state_signature'] = sign_conversation_state(response_payload['conversation_state'])
 
     persistence_enabled = os.getenv('AI_ANALYST_PERSIST_OBSERVABILITY', '1').strip().lower() in {'1', 'true', 'yes', 'on'}
-    if persistence_enabled:
-        persisted = try_persist_observability_run(query=eval_query, payload=response_payload)
-        response_payload['persisted'] = persisted
+    sampled = response_payload['evaluation']['status'] == 'queued'
+    response_payload['persisted'] = None
+    response_payload['post_response_scheduled'] = (sampled or persistence_enabled) and _schedule_post_response_work(api_key=api_key, query=eval_query, trace_log=trace_log if isinstance(trace_log, list) else [], answer=text, payload=response_payload, sampled=sampled, persist=persistence_enabled)
 
     return response_payload
+
+
+def _fast_path_response(messages: list[dict], context: dict) -> dict | None:
+    user_text = next((str(message.get('content') or '') for message in reversed(messages) if message.get('role') == 'user'), '')
+    lowered = user_text.strip().lower()
+    call = None
+    code = re.search(r'\b[pcbu][0-9a-f]{4}\b', lowered, re.IGNORECASE)
+    if code and any(token in lowered for token in ('what is', 'define', 'meaning', 'code')):
+        call = ('get_dtc_details', {'dtc_codes': [code.group(0).upper()]})
+    elif lowered in {'fleet health', 'fleet summary', 'show fleet health', 'show fleet summary'}:
+        call = ('get_fleet_health', {})
+    elif any(token in lowered for token in ('repeat that', 'show that again')) and context.get('_dtc_conversation_state_verified') is True:
+        prior = context.get('_dtc_conversation_state') or {}
+        response = prior.get('last_response') if isinstance(prior.get('last_response'), dict) else None
+        if response and response.get('ok') and response.get('evidence'):
+            call = ('reuse', response)
+    if call is None:
+        return None
+
+    if call[0] == 'reuse':
+        result = dict(call[1])
+        result['_reused_evidence'] = True
+        result['_tool_name'] = str((context.get('_dtc_conversation_state') or {}).get('last_tool') or '')
+        result['_arguments_hash'] = str((context.get('_dtc_conversation_state') or {}).get('last_arguments_hash') or '')
+    else:
+        result = _invoke_mcp_analyst_tool(call[0], call[1], context, user_text)
+    if result.get('error') or not result.get('ok'):
+        text = 'The governed analytics service could not answer that request right now.'
+    elif not isinstance(result.get('data'), list) or not result['data']:
+        text = 'No matching analytics evidence is available for that request.'
+    else:
+        row = result['data'][0]
+        if call[0] == 'get_dtc_details':
+            text = f"{row.get('dtc_code', code.group(0).upper())}: {row.get('description') or 'No description is available.'} System: {row.get('system') or 'unknown'}. Recommended action: {row.get('action_required') or row.get('recommended_preventive_action') or 'Inspect according to the maintenance procedure.'}"
+        elif call[0] == 'get_fleet_health':
+            text = f"Fleet health score is {row.get('fleet_health_score', 'unknown')}. {row.get('total_vehicles', 0)} vehicles are in scope; {row.get('vehicles_with_active_faults', 0)} have active faults and {row.get('vehicles_with_critical_faults', 0)} have critical faults."
+        else:
+            text = 'Here is the previously verified result from this conversation.'
+        evidence = result.get('evidence') or {}
+        disclosures = list(result.get('limitations') or [])
+        if result.get('truncated') or evidence.get('truncated'):
+            disclosures.append('The result is truncated.')
+        if evidence.get('cache_status') == 'hit':
+            disclosures.append(f"Cached analytics were used ({evidence.get('data_freshness', 'freshness unknown')}).")
+        if disclosures:
+            text += ' Limitations: ' + ' '.join(str(item) for item in disclosures)
+
+    tool_results = {'fast_path': result}
+    request_id = result.get('request_id') or str(uuid.uuid4())
+    payload = {
+        'text': text, 'chart': None, 'intent': 'fast_path',
+        'customer_name': str(context.get('customer_name') or ''), 'mode': str(context.get('mode') or ''),
+        'tools_called': [result.get('_tool_name') or call[0]], 'tool_results': tool_results,
+        'metrics': {'fast_path': True}, 'token_usage': {'prompt': 0, 'completion': 0},
+        'nodes_executed': ['fast_path'], 'failure_reasons': [] if result.get('ok') else ['tool_error'],
+        'trace_log': [], 'sql_events': [], 'sql_planner_events': [],
+        'evaluation': {'status': 'not_sampled'}, 'request_id': request_id, 'version': _build_version_metadata(),
+    }
+    state = _conversation_state({'intent': 'fast_path', 'tool_results': tool_results}, context)
+    payload['conversation_state'] = state
+    payload['conversation_state_signature'] = sign_conversation_state(state)
+    return payload
+
+
+def chat(messages: list[dict], context: dict | None = None) -> dict:
+    """Preserve the API contract while selecting direct, shadow, or MCP data access."""
+    try:
+        settings = DTCSettings.from_env()
+    except ValueError as exc:
+        return {'text': f'AI service configuration error: {exc}', 'chart': None}
+    internal_context = dict(context or {})
+    internal_context['_dtc_data_access_mode'] = settings.data_access_mode
+    if settings.data_access_mode in {'mcp', 'shadow'} and not internal_context.get('_dtc_tenant_context'):
+        if settings.data_access_mode == 'mcp':
+            return {'text': 'Authenticated tenant context is required for governed analytics.', 'chart': None, 'failure_reasons': ['unauthenticated_tenant_context']}
+        log.warning('Shadow mode skipped because authenticated tenant context is unavailable')
+    if settings.data_access_mode == 'mcp':
+        fast = _fast_path_response(messages, internal_context)
+        if fast is not None:
+            return fast
+    return _chat_with_configured_data_access(messages, internal_context)

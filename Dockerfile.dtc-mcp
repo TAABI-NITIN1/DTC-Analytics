@@ -1,0 +1,14 @@
+FROM python:3.11.15-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app
+WORKDIR /app
+
+RUN groupadd --system dtc && useradd --system --gid dtc --home-dir /app dtc
+COPY requirements-mcp.txt .
+RUN pip install --no-cache-dir --disable-pip-version-check -r requirements-mcp.txt
+COPY --chown=dtc:dtc src ./src
+
+USER dtc
+EXPOSE 8001
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=2)"]
+CMD ["python", "-m", "src.dtc_mcp"]

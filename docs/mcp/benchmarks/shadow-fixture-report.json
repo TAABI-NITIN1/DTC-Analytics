@@ -1,0 +1,20 @@
+{
+  "version": "synthetic-shadow-v1",
+  "scope": "Local routing/contract parity on schema-compatible fixtures; no real ClickHouse or model.",
+  "cases": 8,
+  "matches": 8,
+  "mismatches": 0,
+  "dimensions": ["row_count", "entities", "sorting", "null_handling", "answer_evidence"],
+  "results": [
+    {"case": "get_fleet_health", "match": true, "direct_ms": 0.8294, "mcp_ms": 0.3674},
+    {"case": "get_fleet_dtc_distribution", "match": true, "direct_ms": 0.3641, "mcp_ms": 0.3044},
+    {"case": "get_fleet_trends", "match": true, "direct_ms": 0.2637, "mcp_ms": 0.2986},
+    {"case": "get_vehicle_health", "match": true, "direct_ms": 0.2527, "mcp_ms": 0.2773},
+    {"case": "get_vehicle_faults", "match": true, "direct_ms": 0.2423, "mcp_ms": 0.2303},
+    {"case": "get_dtc_fleet_impact", "match": true, "direct_ms": 0.2981, "mcp_ms": 0.2695},
+    {"case": "get_dtc_cooccurrence", "match": true, "direct_ms": 0.2028, "mcp_ms": 0.2472},
+    {"case": "get_maintenance_priority", "match": true, "direct_ms": 0.2338, "mcp_ms": 0.2126}
+  ],
+  "not_measured_here": ["production time-filter semantics", "ClickHouse load", "model reasoning quality"],
+  "comparison_validity": "The fixture run proves normalized routing/contract parity only and is not a production performance claim."
+}

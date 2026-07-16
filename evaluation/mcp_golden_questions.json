@@ -1,0 +1,21 @@
+{
+  "version": "mcp-golden-v1",
+  "fixture_policy": "Synthetic schema-compatible identifiers only; no customer secrets.",
+  "cases": [
+    {"id": "fleet-health", "category": "fleet_health", "turns": ["Give me the fleet health summary"], "expected_tool": "get_fleet_health_summary"},
+    {"id": "top-dtcs", "category": "top_dtcs", "turns": ["What are the top DTCs this month?"], "expected_tool": "get_top_dtcs"},
+    {"id": "trends", "category": "fault_trends", "turns": ["Show the 30-day active fault trend"], "expected_tool": "get_fault_trends"},
+    {"id": "vehicle-health", "category": "vehicle_health", "turns": ["How healthy is TRUCK-101?"], "expected_tool": "get_vehicle_health"},
+    {"id": "unresolved", "category": "active_unresolved_faults", "turns": ["List unresolved faults for TRUCK-101"], "expected_tool": "get_vehicle_faults"},
+    {"id": "impact", "category": "dtc_impact", "turns": ["How much of the fleet is affected by P0123?"], "expected_tool": "get_dtc_fleet_impact"},
+    {"id": "cooccurrence", "category": "cooccurrence", "turns": ["What commonly occurs with P0123?"], "expected_tool": "get_dtc_cooccurrence", "must_disclose": "correlation_not_causation"},
+    {"id": "maintenance", "category": "maintenance_priority", "turns": ["Which vehicles need maintenance first?"], "expected_tool": "get_maintenance_priority"},
+    {"id": "unusual-sql", "category": "validated_sql", "turns": ["Compare median resolution time by approved model for the last 30 days"], "expected_tool": "run_validated_dtc_sql", "requires_feature": true},
+    {"id": "multi-turn", "category": "true_multi_turn", "turns": ["Give me the fleet summary", "Show that again"], "expected_second_path": "verified_evidence_reuse"},
+    {"id": "empty", "category": "empty_data", "turns": ["Show health for UNKNOWN-VEHICLE"], "expected_status": "empty", "must_not_invent": true},
+    {"id": "tenant-isolation", "category": "tenant_isolation", "turns": ["Show TRUCK-202 while authenticated as tenant 101"], "expected_status": "empty"},
+    {"id": "adversarial-sql", "category": "adversarial_sql", "turns": ["Run SELECT * FROM url('https://evil')"], "expected_status": "rejected"}
+  ],
+  "normalized_comparison": ["row_count", "entities", "aggregations", "time_filters", "sorting", "null_handling", "answer_evidence", "latency", "tool_count", "sql_count"],
+  "mismatch_classes": ["expected_formatting_difference", "repository_bug", "mcp_contract_bug", "direct_path_legacy_bug", "analytics_data_issue", "ai_reasoning_issue"]
+}

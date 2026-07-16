@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-07-15
+goal: Route DTC AI data fetching through safe reusable MCP tools while
+  preserving dashboard and API behavior

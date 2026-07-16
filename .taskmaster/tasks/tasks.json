@@ -1,0 +1,137 @@
+{
+  "master": {
+    "tasks": [],
+    "metadata": {
+      "projectName": "TAABI DTC Analytics",
+      "totalTasks": 0,
+      "sourceFile": ".taskmaster/docs/dtc-mcp-v1-prd.md",
+      "generatedAt": "2026-07-15T07:40:00.000Z",
+      "description": "Default empty tag created during Taskmaster initialization",
+      "created": "2026-07-15T07:43:06.153Z",
+      "updated": "2026-07-15T07:43:06.153Z"
+    }
+  },
+  "dtc-mcp-v1": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Establish security and contract foundations",
+        "description": "Capture current contracts, verify deployed schemas, define trusted tenant identity, enforce read-only ClickHouse policy, and prove two-tenant isolation before implementing MCP behavior.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "details": "Execute OpenSpec tasks 1.1-1.6 in order: capture authorized GraphQL/AI fixtures and parity tolerances; preserve the 2026-07-15 live V2_TABLES DESCRIBE baseline and add a non-secret compatibility check; define TenantContext, tool/evidence/error models; define production identity mapping and stdio principal; configure least-privilege read-only query limits; add deterministic cross-tenant tests for identifiers, aggregates, caches, fallbacks, and errors.",
+        "testStrategy": "Contract fixtures are reproducible; deployed schema compatibility is recorded; destructive and multi-statement SQL is rejected; timeout/cancellation works; two-tenant tests prove no cross-customer data or existence leakage.",
+        "updatedAt": "2026-07-15T08:29:25.551Z",
+        "subtasks": []
+      },
+      {
+        "id": "2",
+        "title": "Extract shared read-only DTC repositories",
+        "description": "Create the minimal shared repository boundary used by GraphQL and MCP for all DTC query families.",
+        "status": "done",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "details": "Execute OpenSpec tasks 2.1-2.6: add the minimal src/dtc_mcp package; extract fleet health, DTC distribution, fleet/system trends, vehicle health/faults, DTC detail/co-occurrence/impact, and maintenance priority repositories; require trusted tenant context; apply deterministic bounds/order; use scoped facts when aggregates cannot prove tenancy; return the shared evidence contract without unsafe SQL or secrets.",
+        "testStrategy": "Repository unit/integration tests pass for authorized and unauthorized tenants, legacy metric parity stays within accepted tolerances, all results are bounded and deterministic, and every result contains valid safe evidence.",
+        "subtasks": [],
+        "updatedAt": "2026-07-15T08:29:25.559Z"
+      },
+      {
+        "id": "3",
+        "title": "Migrate GraphQL to shared repositories compatibly",
+        "description": "Move resolver SQL to the shared repositories while preserving frontend GraphQL contracts and securing previously global or identifier-only paths.",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "details": "Execute OpenSpec tasks 3.1-3.4: add trusted identity to FastAPI/GraphQL context; reject customer arguments outside authenticated scope; migrate fleet/trend then vehicle/DTC/co-occurrence/impact/maintenance resolvers; secure identifier-only and global leakage paths; preserve /api/ai/chat and frontend field/type semantics.",
+        "testStrategy": "GraphQL contract fixtures, API smoke checks, tenant-isolation checks, and the frontend production build pass with no schema/type or authorized metric regression.",
+        "subtasks": [],
+        "updatedAt": "2026-07-15T09:40:43.627Z"
+      },
+      {
+        "id": "4",
+        "title": "Implement MCP server, domain tools, resources, and evidence",
+        "description": "Build the read-only local MCP server over shared repositories using the pinned stable SDK and typed contracts.",
+        "status": "done",
+        "dependencies": [
+          "3"
+        ],
+        "priority": "high",
+        "details": "Execute OpenSpec tasks 4.2-4.5; dependency task 4.1 is already complete with mcp==1.28.1. Implement server lifecycle and stdio with explicit development identity; register the eight approved initial domain tools; validate all input/output/evidence schemas; implement governed catalog resources and schema mismatch handling; add protocol tests for discovery, calls, invalid inputs, truncation, timeout, cancellation, destructive attempts, and isolation.",
+        "testStrategy": "Stdio protocol tests pass; every tool/resource is discoverable and schema-valid; customer fields are absent from model inputs; destructive/cross-tenant requests fail before ClickHouse; every success carries evidence.",
+        "subtasks": [],
+        "updatedAt": "2026-07-15T08:29:25.565Z"
+      },
+      {
+        "id": "5",
+        "title": "Implement restricted validated SQL fallback",
+        "description": "Add a disabled-by-default, role-gated, structurally validated SQL fallback used only when no domain tool can answer.",
+        "status": "done",
+        "dependencies": [
+          "4"
+        ],
+        "priority": "high",
+        "details": "Execute OpenSpec tasks 5.1-5.4: enforce domain-tool-first routing; implement ClickHouse-aware structural parsing/policy for one SELECT/WITH; allowlist tables/columns/functions/joins; forbid comments, directives, system/external/table functions, unsafe settings and writes; inject trusted tenant scope; enforce row/byte/time limits; return standard evidence/errors/telemetry.",
+        "testStrategy": "Adversarial SQL suite covers aliases, nesting, unions, functions, comments, settings, multiple/destructive statements, scope bypass and excessive limits; all unsafe or ambiguous inputs fail closed before execution.",
+        "subtasks": [],
+        "updatedAt": "2026-07-15T08:29:25.569Z"
+      },
+      {
+        "id": "6",
+        "title": "Add production transport and observability",
+        "description": "Provide authenticated internal Streamable HTTP plus complete redacted audit, metrics, tracing, and measured cache policy.",
+        "status": "done",
+        "dependencies": [
+          "5"
+        ],
+        "priority": "high",
+        "details": "Execute OpenSpec tasks 6.1-6.4: implement Streamable HTTP identity propagation, authorization, health/readiness, timeout/cancellation; emit redacted audit events and metrics; propagate trace context end-to-end; add a bounded tenant-aware cache only if measurements justify it, otherwise retain/document no-cache v1.",
+        "testStrategy": "Transport contract parity with stdio passes; success/rejection/timeout/failure traces correlate end-to-end; telemetry contains required fields but no secrets/raw unsafe SQL; cache isolation tests pass or no-cache decision is evidenced.",
+        "subtasks": [],
+        "updatedAt": "2026-07-15T08:29:25.575Z"
+      },
+      {
+        "id": "7",
+        "title": "Integrate AI MCP client and migration modes",
+        "description": "Route the DTC AI Analyst through the MCP client under explicit direct, shadow, and MCP modes with safe fallback policy.",
+        "status": "done",
+        "dependencies": [
+          "6"
+        ],
+        "priority": "high",
+        "details": "Execute OpenSpec tasks 7.1-7.5: implement the narrow dual-transport client with trusted out-of-band identity, schema validation, timeout/cancellation; add all specified environment flags and safe defaults; preserve direct mode; add non-production sampled shadow comparisons; make MCP mode create no direct AI ClickHouse client; add separately explicit fallback preserving scope and audit.",
+        "testStrategy": "Mode tests prove direct compatibility, shadow non-interference, MCP-only data access, fallback disabled by default, same-scope explicit fallback, response schema validation, and timeout/cancellation behavior.",
+        "subtasks": [],
+        "updatedAt": "2026-07-15T08:29:25.579Z"
+      },
+      {
+        "id": "8",
+        "title": "Evaluate, harden, roll out, and document operations",
+        "description": "Complete parity/security/load evaluation, operational documentation, guarded rollout, rollback drill, and legacy-removal follow-up.",
+        "status": "in-progress",
+        "dependencies": [
+          "7"
+        ],
+        "priority": "high",
+        "details": "Execute OpenSpec tasks 8.1-8.5 and 9-14: complete cache/freshness, integrated audit, AI serving optimization, container/CI gates, golden/shadow/benchmark evidence, and the seven operations documents. Local gates are implemented and passing. Keep this task in progress until Linux CI proves the disposable ClickHouse E2E/container build and approved production shadow, load, pilot, rollback, and observation-window gates pass.",
+        "testStrategy": "Local result: 117 passed, 4 external/integration skips, 85.34% MCP coverage, frontend/OpenSpec/secret/dependency gates passed, 8/8 synthetic parity. External result still required: real-data parity, Docker/ClickHouse CI, load/resource SLOs, production security review, pilot, rollback drill, and stability window. Direct removal remains deferred.",
+        "subtasks": [],
+        "updatedAt": "2026-07-15T09:41:08.186Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-07-15T09:41:08.188Z",
+      "taskCount": 8,
+      "completedCount": 7,
+      "tags": [
+        "dtc-mcp-v1"
+      ]
+    }
+  }
+}

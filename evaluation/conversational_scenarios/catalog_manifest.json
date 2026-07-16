@@ -1,0 +1,14 @@
+{
+  "catalog_id": "sessions_1000",
+  "catalog_version": "v1",
+  "output": "C:\\Users\\Client\\Downloads\\DTC_Analytics_Local\\evaluation\\conversational_scenarios\\sessions_1000.json",
+  "session_counts": {
+    "single": 650,
+    "static_multi": 250,
+    "dynamic_multi": 100,
+    "total": 1000
+  },
+  "git_commit": "6b2886df",
+  "generator_model": "template-only",
+  "seed": 42
+}

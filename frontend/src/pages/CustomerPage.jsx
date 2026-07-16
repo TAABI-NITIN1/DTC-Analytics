@@ -25,14 +25,16 @@ const CUSTOMER_QUERY = gql`
 `;
 
 function CustomerPage({ onSelectCustomer, demoMode }) {
-  const { data, loading } = useQuery(CUSTOMER_QUERY, { variables: { limit: 50 } });
+  const { data, loading } = useQuery(CUSTOMER_QUERY, { variables: { limit: 200 } });
   const rows = data?.customerOverview ?? [];
 
   const totalVehicles = rows.reduce((s, r) => s + r.vehicleCount, 0);
   const totalActive = rows.reduce((s, r) => s + r.activeFaultVehicles, 0);
   const totalCritical = rows.reduce((s, r) => s + r.criticalFaultVehicles, 0);
   const avgScore =
-    rows.length > 0 ? rows.reduce((s, r) => s + r.avgHealthScore, 0) / rows.length : 0;
+    totalVehicles > 0
+      ? rows.reduce((s, r) => s + r.avgHealthScore * r.vehicleCount, 0) / totalVehicles
+      : 0;
 
   return (
     <div className="page">

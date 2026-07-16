@@ -2,6 +2,7 @@ SCHEMA_REGISTRY = {
     "vehicle_fault_master_ravi_v2": {
         "description": "Fault episodes per vehicle with severity, resolution, and customer scope",
         "columns": [
+            "clientLoginId",
             "uniqueid",
             "vehicle_number",
             "customer_name",
@@ -40,6 +41,7 @@ SCHEMA_REGISTRY = {
     "fleet_dtc_distribution_ravi_v2": {
         "description": "Pre-aggregated fleet DTC distribution and impact metrics",
         "columns": [
+            "clientLoginId",
             "dtc_code",
             "description",
             "system",
@@ -59,7 +61,7 @@ SCHEMA_REGISTRY = {
             "common dtc",
         ],
         "filters": {
-            "customer_name": "not_available",
+            "clientLoginId": "required_server_scope",
         },
         "joins": {
             "dtc_code": "dtc_master_ravi_v2.dtc_code",
@@ -69,6 +71,7 @@ SCHEMA_REGISTRY = {
     "fleet_health_summary_ravi_v2": {
         "description": "Fleet-wide summary KPIs",
         "columns": [
+            "clientLoginId",
             "total_vehicles",
             "vehicles_with_active_faults",
             "vehicles_with_critical_faults",
@@ -85,7 +88,7 @@ SCHEMA_REGISTRY = {
             "summary",
         ],
         "filters": {
-            "customer_name": "not_available",
+            "clientLoginId": "required_server_scope",
         },
         "joins": {},
         "priority": "aggregated",
@@ -93,6 +96,7 @@ SCHEMA_REGISTRY = {
     "fleet_fault_trends_ravi_v2": {
         "description": "Daily trend series for fleet faults and health",
         "columns": [
+            "clientLoginId",
             "date",
             "active_faults",
             "new_faults",
@@ -108,6 +112,7 @@ SCHEMA_REGISTRY = {
         ],
         "filters": {
             "date": "range",
+            "clientLoginId": "required_server_scope",
         },
         "joins": {},
         "priority": "aggregated",
@@ -115,6 +120,7 @@ SCHEMA_REGISTRY = {
     "fleet_system_health_ravi_v2": {
         "description": "Fleet risk and fault metrics by system",
         "columns": [
+            "clientLoginId",
             "system",
             "vehicles_affected",
             "active_faults",
@@ -129,7 +135,7 @@ SCHEMA_REGISTRY = {
             "emission issues",
         ],
         "filters": {
-            "customer_name": "not_available",
+            "clientLoginId": "required_server_scope",
         },
         "joins": {},
         "priority": "aggregated",
@@ -137,6 +143,7 @@ SCHEMA_REGISTRY = {
     "vehicle_health_summary_ravi_v2": {
         "description": "Vehicle-level health summary and issue flags",
         "columns": [
+            "clientLoginId",
             "uniqueid",
             "vehicle_number",
             "customer_name",
@@ -172,6 +179,7 @@ SCHEMA_REGISTRY = {
     "maintenance_priority_ravi_v2": {
         "description": "Pre-ranked maintenance priorities by vehicle and fault",
         "columns": [
+            "clientLoginId",
             "uniqueid",
             "vehicle_number",
             "dtc_code",
@@ -188,7 +196,7 @@ SCHEMA_REGISTRY = {
             "action plan",
         ],
         "filters": {
-            "customer_name": "via_join_vehicle_health_summary",
+            "clientLoginId": "required_server_scope",
             "vehicle_number": "optional",
         },
         "joins": {
@@ -200,6 +208,7 @@ SCHEMA_REGISTRY = {
     "dtc_fleet_impact_ravi_v2": {
         "description": "Fleet impact metrics by DTC code",
         "columns": [
+            "clientLoginId",
             "dtc_code",
             "system",
             "subsystem",
@@ -215,7 +224,7 @@ SCHEMA_REGISTRY = {
             "fleet risk",
         ],
         "filters": {
-            "customer_name": "not_available",
+            "clientLoginId": "required_server_scope",
         },
         "joins": {
             "dtc_code": "dtc_master_ravi_v2.dtc_code",
@@ -225,6 +234,7 @@ SCHEMA_REGISTRY = {
     "dtc_cooccurrence_ravi_v2": {
         "description": "Co-occurrence pairs for DTC codes",
         "columns": [
+            "clientLoginId",
             "dtc_code_a",
             "dtc_code_b",
             "cooccurrence_count",
@@ -239,6 +249,7 @@ SCHEMA_REGISTRY = {
         ],
         "filters": {
             "dtc_code": "optional",
+            "clientLoginId": "required_server_scope",
         },
         "joins": {
             "dtc_code_a": "dtc_master_ravi_v2.dtc_code",

@@ -13,6 +13,12 @@ V2_TABLES = {
     "dtc_cooccurrence": "dtc_cooccurrence_ravi_v2",
 }
 
+OBD_SOLUTION_TYPES = (
+    "obd_solution",
+    "obd_analog_solution",
+    "obd_fuel+fuel_solution",
+)
+
 
 def ensure_v2_tables(_client=None):
     """No-op in API-only mode.

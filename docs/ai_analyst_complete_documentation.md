@@ -398,6 +398,288 @@ This section lists tables referenced by tool SQL and prompt/schema context.
 - `fleet_system_health_ravi_v2`
 - `dtc_fleet_impact_ravi_v2`
 - `dtc_cooccurrence_ravi_v2`
+
+## 10. Tool Schemas, Parameters, and Example Outputs
+
+This section documents the callable tools, their input parameters, typical outputs, and example payloads that the AI Analyst expects and produces.
+
+### 10.1 `get_fleet_health`
+- Parameters: `customer_name` (optional string), `days` (optional int, default 30)
+- Returns: JSON object with `{ total_vehicles, vehicles_with_active_faults, vehicles_with_critical_faults, fleet_health_score, most_common_dtc, most_common_system, active_fault_trend }`
+
+Example output:
+
+```
+{
+  "total_vehicles": 2042,
+  "vehicles_with_active_faults": 1446,
+  "vehicles_with_critical_faults": 287,
+  "fleet_health_score": 94.5,
+  "most_common_dtc": "P0420",
+  "most_common_system": "Powertrain",
+  "active_fault_trend": "increasing"
+}
+```
+
+### 10.2 `get_vehicle_health`
+- Parameters: `uniqueid` (string), `customer_name` (optional), `limit` (optional)
+- Returns: vehicle-level summary rows matching `vehicle_health_summary_ravi_v2` schema
+
+Example output (truncated):
+
+```
+{
+  "uniqueid": "MH12AB1234",
+  "vehicle_number": "MH12-1234",
+  "active_fault_count": 3,
+  "critical_fault_count": 1,
+  "vehicle_health_score": 82.3,
+  "most_common_dtc": "P0128"
+}
+```
+
+### 10.3 `get_vehicle_faults`
+- Parameters: `uniqueid`, `limit`, `since_ts`/`until_ts`
+- Returns: List of episode objects (one row per episode) from `vehicle_fault_master_ravi_v2`.
+
+Example output (one episode):
+
+```
+{
+  "episode_id": "MH12AB1234_P0128_3",
+  "dtc_code": "P0128",
+  "first_ts": 1679875200,
+  "last_ts": 1679961600,
+  "occurrence_count": 12,
+  "resolution_time_sec": 86400,
+  "is_resolved": 0,
+  "severity_level": 3
+}
+```
+
+### 10.4 `get_dtc_details`
+- Parameters: `dtc_code`
+- Returns: Entry from `dtc_master_ravi_v2` with severity, description, symptoms, recommended actions.
+
+### 10.5 `run_sql`
+- Parameters: `sql` (string), `max_rows` (int)
+- Behavior: Only allowed tables from `_ALLOWED_TABLES` are permitted. The tool performs read-only `SELECT` statements and returns `{ rows: [...], row_count, query }` or an `error` field.
+
+Example `run_sql` output:
+
+```
+{
+  "query": "SELECT uniqExactIf(uniqueid, is_resolved = 0) FROM vehicle_fault_master_ravi_v2 WHERE clientLoginId = 'VRL'",
+  "row_count": 1,
+  "rows": [[1446]]
+}
+```
+
+### 10.6 `generate_chart`
+- Parameters: `type` (bar/line/pie), `data` (array of objects), `title`, `x`, `y`
+- Returns: `chart_config` object used by frontend to render visualizations
+
+Example chart_config (bar):
+
+```
+{ "type": "bar", "title": "Top DTCs", "data": [{"dtc":"P0420","count":120},{"dtc":"P0128","count":88}], "x":"dtc","y":"count" }
+```
+
+## 11. SQL Patterns and Safe Usage
+
+The AI Analyst uses deterministic SQL patterns for common information requests and only allows read-only queries in `run_sql`.
+
+Recommended patterns:
+
+- Distinct active vehicles for a customer:
+
+```
+SELECT uniqExactIf(uniqueid, is_resolved = 0) AS active_vehicles
+FROM vehicle_fault_master_ravi_v2
+WHERE customer_name = 'VRL LOGISTICS LIMITED'
+```
+
+- Per-vehicle recent episodes (last 30 days):
+
+```
+SELECT episode_id, dtc_code, first_ts, last_ts, occurrence_count, is_resolved
+FROM vehicle_fault_master_ravi_v2
+WHERE uniqueid = 'MH12AB1234' AND first_ts >= {thirty_days_ago_ts}
+ORDER BY first_ts DESC
+LIMIT 100
+```
+
+Security enforcement:
+
+- `run_sql` rejects queries that contain `INSERT`, `UPDATE`, `DELETE`, `ALTER`, `DROP`, `TRUNCATE`, or reference non-allowed tables.
+- All parameter values must be sanitized and/or bound by the runtime; never format user input directly into SQL.
+
+## 12. Observability, Tracing, and Persisted Payloads
+
+The AI Analyst produces rich observability payloads for every request. Key pieces:
+
+- `trace_log`: List of node-level events produced by the `trace_node` decorator. Each entry contains `node`, `duration`, `metrics`, `sql_events`, `output_summary`.
+- `sql_events`: Array of SQL execution events with `{ query, duration, row_count, success, error }`.
+- `sql_planner_events`: Events describing generated SQL from planner and fix attempts.
+- `request_id`: Correlation id used across logs, traces, and persisted payloads.
+
+Persistence flow:
+
+- At the end of a run, `try_persist_observability_run(state)` attempts to write a compact JSON payload to the observability store (clickhouse/managed store). Payload includes `version`, `trace_log`, `sql_planner_events`, `metrics`, `final_answer_preview`, and `token_usage`.
+- MLflow metrics (if enabled) are emitted per-run with tags for `intent`, `customer_name`, `model_name`, and `release_version`.
+
+Retention and size:
+
+- Trace payloads are truncated to avoid storing raw messages longer than 4k characters. Full SQL queries are preserved but large result sets are summarized with `row_count` only.
+
+## 13. Evaluation, Testing, and Benchmarks
+
+### 13.1 `evaluate_trace` and unit tests
+
+- `evaluate_trace(trace_log)` computes readiness signals such as `final_answer_non_empty`, `sql_error_rate`, `tool_error_rate`, and `intent_consistency`.
+- Unit tests should assert expected behavior for each node using mocked LLM and tool responses.
+
+Example pytest snippets:
+
+```python
+def test_detect_intent_simple():
+    state = {'messages': [HumanMessage(content='Show top DTCs last 7 days')], 'request_id': 'test'}
+    result = _node_detect_intent(state)
+    assert result['intent'] in ('fleet_health', 'trend_analysis')
+
+def test_investigate_data_tool_fallback(monkeypatch):
+    # Mock tools to return empty, ensure fallback to get_fleet_health
+    monkeypatch.setattr(tools_module, 'get_fleet_health', lambda **k: {'total_vehicles': 1})
+    state = {'messages': [HumanMessage(content='Status for VRL')], 'context': {'customer_name': 'VRL'}}
+    res = _node_investigate_data(state)
+    assert 'tool_results' in res
+```
+
+### 13.2 Integration tests
+
+- Use a small ClickHouse test dataset (subset of V2 tables) in CI.
+- Validate end-to-end flows: sample user message → graph invoke → persisted trace → expected keys in response.
+
+### 13.3 Performance benchmarks
+
+- Latency targets:
+  - Intent detection: < 200ms
+  - Investigate data (tools only): < 1s for typical tool calls
+  - Full diagnostic flow with 2 SQL calls: < 2–3s
+
+- Concurrency: Runtime should support N parallel requests where N is tuned per CPU and connection pool; recommended starting point 8 workers with 5 threads each.
+
+## 14. Deployment and Runtime Configuration
+
+### 14.1 Environment variables (summary)
+
+- `OPENAI_API_KEY` — LLM key (required)
+- `AI_ANALYST_MODEL_NAME` — default model name
+- `AI_ANALYST_TOOL_FIRST` — boolean
+- `AI_ANALYST_DYNAMIC_SQL_FALLBACK` — boolean
+- `MLFLOW_TRACKING_URI` — optional MLflow host
+- `HEALTH_SCALING_CONSTANT` — pipeline constant
+- `CLICKHOUSE_HTTP_URL` — ClickHouse HTTP endpoint (default port 8123)
+
+### 14.2 Container and scaling guidance
+
+- CPU: 2–4 vCPUs per replica for moderate load
+- Memory: 4–8 GB depending on model and LLM client libraries
+- Autoscaling: scale replicas by request latency and queue depth; prefer horizontal scaling with shared ClickHouse connection pool
+
+### 14.3 Observability and alerting
+
+- Instrument metrics: request_count, request_latency, error_rate, sql_error_rate, tool_error_rate
+- Alerts: request_latency > 5s, sql_error_rate > 0.05, tool_error_rate > 0.1
+
+## 15. Security, Privacy, and Data Governance
+
+### 15.1 PII and sensitive data handling
+
+- Do not log full VINs or driver PII in persisted traces. Use hashed or truncated identifiers for persisted payloads.
+- Redact text fields that match configured PII regexes prior to persistence.
+
+### 15.2 Access control
+
+- Only backend services with appropriate vault-scoped credentials should access `OPENAI_API_KEY` and `CLICKHOUSE_HTTP_URL`.
+- API endpoints should be authenticated and authorized by customer scope.
+
+### 15.3 Prompt and tool safety
+
+- Avoid passing raw diagnostic text to LLM without structured context.
+- Enforce the `NEVER` rules (no hallucination of DTCs, no write SQL) in prompts and at runtime.
+
+## 16. Failure Handling and Retries
+
+- Transient LLM failures: retry up to 2 times with exponential backoff (200ms → 600ms).
+- Transient ClickHouse HTTP errors: retry up to 3 times with backoff; log full SQL on final failure.
+- Permanent tool errors: mark `failure_reasons` and surface concise error message to user.
+
+## 17. Maintenance, Changelog, and Versioning
+
+- Bump `PROMPT_VERSIONS` when editing any prompt text.
+- Record `AI_ANALYST_RELEASE_VERSION` for each deployment and include in `version` metadata persisted with traces.
+- Changelog should list prompt, model, and SQL changes.
+
+## 18. Troubleshooting Guide
+
+- Symptom: Empty final answer
+  - Check `trace_log` for `investigate_data` and `tool_results` entries.
+  - If no SQL events, ensure `AI_ANALYST_TOOL_FIRST` is enabled or planner fallback is active.
+
+- Symptom: SQL errors in run
+  - Inspect `sql_planner_events` for generated query and `error` messages.
+  - Re-run query in ClickHouse client with bound parameters to reproduce.
+
+- Symptom: Slow responses
+  - Measure per-node durations in `trace_log` to find bottleneck (LLM vs SQL vs chart generation).
+
+## 19. Example Conversations and Walkthroughs
+
+### 19.1 Fleet-level query
+
+User: "Show me the top 5 DTC codes for VRL Logistics in the last 30 days and suggest top maintenance actions."
+
+Flow:
+- `detect_intent` → classifies `trend_analysis`
+- `build_context` → scope `{ customer_name: 'VRL Logistics', days: 30 }`
+- `investigate_data` → calls `get_fleet_dtc_distribution` and `get_maintenance_priority`
+- `analyze_faults` → groups codes by severity and recurrence
+- `generate_recommendation` → recommends maintenance actions for top 3 codes
+- `explain` → returns structured report + `chart_config` for top DTCs
+
+### 19.2 Vehicle-level deep-dive
+
+User: "Why is vehicle MH12AB1234 health score low?"
+
+Flow:
+- `detect_intent` → `vehicle_investigation`
+- `build_context` → scope `{ uniqueid: 'MH12AB1234' }`
+- `investigate_data` → `get_vehicle_health` + `get_vehicle_faults` + `get_dtc_details`
+- `analyze_faults` → identifies recurring P0128 episodes with long durations
+- `reason_root_cause` → hypothesizes coolant thermostat failure or sensor fault
+- `assess_maintenance` → assigns CRITICAL and suggests immediate inspection
+- `generate_recommendation` → step-by-step checks and parts to inspect
+- `explain` → user-facing actionable summary with estimated downtime risk
+
+## 20. Appendix: Useful Files and References
+
+- Implementation: `src/ai_analyst.py`
+- Observability helpers: `src/observability_store.py`
+- Evaluation harness: `src/evaluation_agent.py`
+- Prompt versions: `PROMPT_VERSIONS` at top of `src/ai_analyst.py`
+- RAG docs: `docs/rag/*.md`
+
+---
+
+If you'd like, I can:
+
+- generate a downloadable Word/PDF version of this completed AI Analyst documentation,
+- create a condensed one-page executive summary for stakeholders,
+- or produce a test harness (pytest) with mocked tools and sample ClickHouse data to validate the full graph in CI.
+
+Tell me which of these you prefer next and I'll proceed.
+
 - `maintenance_priority_ravi_v2`
 - `dtc_master_ravi_v2`
 

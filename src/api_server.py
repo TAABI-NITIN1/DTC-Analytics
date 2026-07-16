@@ -25,6 +25,8 @@ from src.conversation_store import (
     validate_conversation_customer_scope,
 )
 from src.graphql_schema import schema as graphql_schema
+from src.dtc_mcp.config import DTCSettings
+from src.dtc_mcp.security import SecurityError, development_context, tenant_scope_fingerprint, verify_conversation_state, verify_signed_identity
 
 # -------------------------------
 # Logging
@@ -46,6 +48,24 @@ app = FastAPI(title='DTC Analytics API')
 CONVERSATION_CONTEXT_WINDOW = 12
 
 
+def _request_tenant_context(request: Request):
+    settings = DTCSettings.from_env()
+    if request.headers.get('X-DTC-Identity'):
+        return verify_signed_identity(
+            request.headers.get('X-DTC-Identity', ''),
+            request.headers.get('X-DTC-Identity-Signature', ''),
+            os.getenv('DTC_MCP_IDENTITY_HMAC_SECRET', ''),
+        )
+    return development_context(settings)
+
+
+async def _graphql_context(request: Request) -> dict:
+    try:
+        return {'request': request, 'tenant_context': _request_tenant_context(request)}
+    except SecurityError as exc:
+        raise HTTPException(status_code=401, detail=exc.code.value) from exc
+
+
 @app.exception_handler(ClientDisconnect)
 async def handle_client_disconnect(request: Request, exc: ClientDisconnect):
     logging.debug("Client disconnected before request completed: %s %s", request.method, request.url.path)
@@ -56,10 +76,11 @@ async def handle_client_disconnect(request: Request, exc: ClientDisconnect):
 # -------------------------------
 app.add_middleware(
     CORSMiddleware,
-    # Allow the local dev host(s) used during development. Use a regex
-    # so we can match the IP or localhost variants without listing each
-    # exact origin. Keep credentials enabled for local auth flows.
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|4\.224\.101\.147):5173$",
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://4.224.101.147:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,7 +100,7 @@ if UI_ROOT.exists():
 # GraphQL (keep UI OFF in prod)
 # -------------------------------
 app.include_router(
-    GraphQLRouter(graphql_schema, graphiql=False),
+    GraphQLRouter(graphql_schema, graphiql=False, context_getter=_graphql_context),
     prefix='/graphql'
 )
 
@@ -143,10 +164,29 @@ async def _log_to_dify(query, answer, context):
 # AI endpoint
 # -------------------------------
 @app.post('/api/ai/chat')
-async def ai_chat(req: ChatRequest):
+async def ai_chat(req: ChatRequest, request: Request):
     from src.ai_analyst import chat as chat_fn
 
     context = req.context or {}
+    incoming_conversation_state = context.get('conversation_state') if isinstance(context.get('conversation_state'), dict) else None
+    incoming_state_signature = str(context.get('conversation_state_signature') or '')
+    data_settings = DTCSettings.from_env()
+    if data_settings.data_access_mode in {'mcp', 'shadow'}:
+        try:
+            tenant_context = _request_tenant_context(request)
+        except SecurityError as exc:
+            raise HTTPException(status_code=401, detail=str(exc))
+        context = dict(context)
+        context['_dtc_tenant_context'] = tenant_context.model_dump(mode='json')
+        context['_trusted_customer_name'] = tenant_context.customer_id
+        context['customer_name'] = tenant_context.customer_id
+        if incoming_conversation_state:
+            if not verify_conversation_state(incoming_conversation_state, incoming_state_signature):
+                raise HTTPException(status_code=403, detail='Conversation state signature is invalid')
+            if incoming_conversation_state.get('active_customer_scope') != tenant_scope_fingerprint(tenant_context):
+                raise HTTPException(status_code=403, detail='Conversation state is outside the authenticated tenant scope')
+            context['_dtc_conversation_state'] = incoming_conversation_state
+            context['_dtc_conversation_state_verified'] = True
     customer_name = str(context.get('customer_name') or '').strip()
     mode = str(context.get('mode') or 'general').strip() or 'general'
 
@@ -619,9 +659,7 @@ def runtime_config():
 #     customer_name: str | None = None,
 # ):
 #     return {"status": "ok"}
- 
+
 # @app.get('/health')
 # def health():
 #     return {"status": "ok"}
- 
- 

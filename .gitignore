@@ -10,6 +10,7 @@ mlflow.db
 # Airflow and Python cache
 .airflow/
 __pycache__/
+*.py[cod]
 
 # Node/React Dependencies
 node_modules/
@@ -18,3 +19,33 @@ build/
 myvenv/
 .venv311/
 .langgraph_api/
+
+# Local-only conversational evaluation artifacts
+evaluation/artifacts/
+evaluation/.cache/
+*.tmp
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+# Dependency directories
+# Environment variables
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Task files
+# tasks.json
+# tasks/

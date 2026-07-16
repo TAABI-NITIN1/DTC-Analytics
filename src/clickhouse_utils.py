@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import clickhouse_connect
 from clickhouse_driver import Client
 
-from src.config import get_clickhouse_cfg, get_vehicle_clickhouse_cfg
+import os
+
+from src.config import get_clickhouse_cfg, get_dtc_mcp_clickhouse_cfg, get_vehicle_clickhouse_cfg
 
 
 class ClickHouseHTTPAdapter:
@@ -18,28 +21,6 @@ class ClickHouseHTTPAdapter:
     def __init__(self, client: clickhouse_connect.driver.client.Client):
         self._client = client
 
-    def _render_query(self, query: str, params: dict[str, Any] | None) -> str:
-        if not params:
-            return query
-
-        rendered = query
-        for key, value in params.items():
-            rendered = rendered.replace(f"%({key})s", self._literal(value))
-        return rendered
-
-    @staticmethod
-    def _literal(value: Any) -> str:
-        if value is None:
-            return "NULL"
-        if isinstance(value, bool):
-            return "1" if value else "0"
-        if isinstance(value, (int, float)):
-            return str(value)
-        if isinstance(value, (list, tuple, set)):
-            return "(" + ", ".join(ClickHouseHTTPAdapter._literal(v) for v in value) + ")"
-        escaped = str(value).replace("'", "''")
-        return f"'{escaped}'"
-
     def execute(self, query: str, params: dict[str, Any] | list[tuple] | None = None, settings: dict[str, Any] | None = None):
         upper = query.lstrip().upper()
 
@@ -49,22 +30,27 @@ class ClickHouseHTTPAdapter:
                 raise ValueError("List payload is supported only for INSERT statements")
             return self._insert_rows(query, params)
 
-        rendered = self._render_query(query, params if isinstance(params, dict) else None)
-
         if upper.startswith("SELECT") or upper.startswith("SHOW") or upper.startswith("DESCRIBE") or upper.startswith("WITH"):
-            result = self._client.query(rendered, settings={k: str(v) for k, v in (settings or {}).items()})
+            result = self._client.query(
+                query,
+                parameters=params if isinstance(params, dict) else None,
+                settings={k: str(v) for k, v in (settings or {}).items()},
+            )
             return result.result_rows
 
-        self._client.command(rendered, settings={k: str(v) for k, v in (settings or {}).items()})
+        self._client.command(
+            query,
+            parameters=params if isinstance(params, dict) else None,
+            settings={k: str(v) for k, v in (settings or {}).items()},
+        )
         return []
 
-    def query_df(self, query: str, params: dict[str, Any] | None = None):
+    def query_df(self, query: str, params: dict[str, Any] | None = None, settings: dict[str, Any] | None = None):
         """Return `(column_names, result_rows)` for select-style queries.
 
         Some existing service paths rely on this helper shape.
         """
-        rendered = self._render_query(query, params)
-        result = self._client.query(rendered)
+        result = self._client.query(query, parameters=params, settings={k: str(v) for k, v in (settings or {}).items()})
         return result.column_names, result.result_rows
 
     def _insert_rows(self, query: str, rows: list[tuple]):
@@ -76,6 +62,26 @@ class ClickHouseHTTPAdapter:
         column_names = [c.strip().replace("`", "") for c in cols_part.split(",") if c.strip()]
         self._client.insert(table=table_name, data=rows, column_names=column_names)
         return []
+
+
+class ClickHouseNativeAdapter:
+    """Expose the same bound-parameter interface for clickhouse-driver."""
+
+    _SERVER_PARAMETER = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*):[^{}]+\}")
+
+    def __init__(self, client: Client):
+        self._client = client
+
+    @classmethod
+    def _driver_query(cls, query: str) -> str:
+        return cls._SERVER_PARAMETER.sub(lambda match: f"%({match.group(1)})s", query)
+
+    def execute(self, query: str, params=None, settings=None):
+        return self._client.execute(self._driver_query(query), params, settings=settings)
+
+    def query_df(self, query: str, params=None, settings=None):
+        rows, column_types = self._client.execute(self._driver_query(query), params, with_column_types=True, settings=settings)
+        return [name for name, _ in column_types], rows
 
 
 
@@ -101,12 +107,14 @@ def _build_client(cfg: dict[str, Any]):
         )
         return ClickHouseHTTPAdapter(http_client)
 
-    return Client(
-        host=host,
-        port=port,
-        user=user,
-        password=password,
-        database=database,
+    return ClickHouseNativeAdapter(
+        Client(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            database=database,
+        )
     )
 
 
@@ -130,6 +138,18 @@ def get_vehicle_clickhouse_client(**overrides):
         "database": vehicle_cfg.get("database") or base_cfg.get("database"),
     }
     merged.update({k: v for k, v in overrides.items() if v is not None})
+    return _build_client(merged)
+
+
+def get_dtc_mcp_clickhouse_client(**overrides):
+    """Build the governed read-only client through the existing client stack."""
+    dedicated = get_dtc_mcp_clickhouse_cfg()
+    environment = (os.getenv("DEPLOYMENT_ENV") or os.getenv("ENV_NAME") or "development").strip().lower()
+    if environment in {"prod", "production"} and not all(dedicated.get(key) for key in ("host", "user", "password", "database")):
+        raise RuntimeError("Dedicated DTC MCP ClickHouse configuration is required in production")
+    base = get_clickhouse_cfg()
+    merged = {key: dedicated.get(key) or base.get(key) for key in ("host", "port", "user", "password", "database")}
+    merged.update({key: value for key, value in overrides.items() if value is not None})
     return _build_client(merged)
 
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { gql, useQuery } from '@apollo/client';
 import {
   ResponsiveContainer,
@@ -104,17 +105,34 @@ const healthLabel = (score) => {
   return 'Poor';
 };
 
-function FleetPage({ days, customerName, onSelectVehicle, onSelectDtc, demoMode }) {
+function FleetPage({ days, customerName, onSelectVehicle, onSelectDtc, demoMode, onDashboardKpisChange }) {
   const { data, loading } = useQuery(FLEET_QUERY, {
     variables: { days, limit: 10, customerName: customerName || null },
   });
 
   const kpis = data?.fleetKpis;
+  const snap = data?.fleetHealthSnap;
+
+  useEffect(() => {
+    if (!onDashboardKpisChange) return;
+    if (!kpis) {
+      onDashboardKpisChange(null);
+      return;
+    }
+    onDashboardKpisChange({
+      total_vehicles: kpis.totalVehicles,
+      vehicles_with_active_dtcs: kpis.vehiclesWithDtcs,
+      critical_vehicles: kpis.criticalVehicles,
+      fleet_health_score: kpis.fleetHealthScore,
+      most_common_dtc: snap?.mostCommonDtc ?? null,
+      most_common_system: snap?.mostCommonSystem ?? null,
+      driver_related_faults: snap?.driverRelatedFaults ?? null,
+    });
+  }, [kpis, snap, onDashboardKpisChange]);
   const trend = data?.fleetTrend ?? [];
   const topRisk = data?.topRiskVehicles ?? [];
   const topDtc = data?.topDtcCodes ?? [];
   const maxOcc = Math.max(...topDtc.map((d) => d.occurrences), 1);
-  const snap = data?.fleetHealthSnap;
   const systemHealth = data?.fleetSystemHealth ?? [];
   const faultTrends = data?.fleetFaultTrends ?? [];
 

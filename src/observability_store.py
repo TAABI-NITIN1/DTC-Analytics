@@ -1,5 +1,6 @@
 import json
 import logging
+import threading
 from datetime import datetime, timezone
 
 from src.clickhouse_utils import get_clickhouse_client
@@ -16,7 +17,10 @@ OBS_TABLES = {
     'prompt_scores': 'ai_obs_prompt_scores',
     'prompt_versions': 'ai_obs_prompt_versions',
     'prompt_inventory': 'ai_obs_prompt_inventory',
+    'mcp_calls': 'ai_obs_mcp_calls',
 }
+_MCP_TABLE_READY = False
+_MCP_TABLE_LOCK = threading.Lock()
 
 _NODE_TO_PROMPT_KEY = {
     'detect_intent': 'intent',
@@ -510,4 +514,57 @@ def try_persist_observability_run(*, query: str, payload: dict) -> bool:
         return True
     except Exception as exc:
         log.warning('Observability persistence skipped: %s', exc)
+        return False
+
+
+def _ensure_mcp_audit_table(client) -> None:
+    global _MCP_TABLE_READY
+    if _MCP_TABLE_READY:
+        return
+    with _MCP_TABLE_LOCK:
+        if _MCP_TABLE_READY:
+            return
+        client.execute(f'''
+            CREATE TABLE IF NOT EXISTS {OBS_TABLES['mcp_calls']} (
+                request_id String, trace_id String, session_id String, ai_run_id String,
+                ts DateTime64(3), user_id String, tenant_id String, scope_ref String,
+                tool_name String, tool_version String, transport String, mode String,
+                status String, latency_ms Float64, database_latency_ms Float64,
+                row_count UInt32, truncated UInt8, cache_status String,
+                tables_accessed_json String, query_hash String, error_category String,
+                parameters_json String, event_json String
+            ) ENGINE = MergeTree ORDER BY (ts, tool_name, request_id)
+        ''')
+        _MCP_TABLE_READY = True
+
+
+def try_persist_mcp_audit_event(event: dict) -> bool:
+    try:
+        client = get_clickhouse_client()
+        _ensure_mcp_audit_table(client)
+        client.execute(
+            f'''INSERT INTO {OBS_TABLES['mcp_calls']} (
+                request_id, trace_id, session_id, ai_run_id, ts, user_id, tenant_id, scope_ref,
+                tool_name, tool_version, transport, mode, status, latency_ms, database_latency_ms,
+                row_count, truncated, cache_status, tables_accessed_json, query_hash,
+                error_category, parameters_json, event_json
+            ) VALUES''',
+            [(
+                str(event.get('request_id') or ''), str(event.get('trace_id') or ''),
+                str(event.get('session_id') or ''), str(event.get('ai_run_id') or ''),
+                _iso_to_dt(str(event.get('start_time') or '')), str(event.get('user_id') or ''),
+                str(event.get('tenant_id') or ''), str(event.get('scope_ref') or ''),
+                str(event.get('tool_name') or ''), str(event.get('tool_version') or ''),
+                str(event.get('transport') or ''), str(event.get('mode') or ''),
+                str(event.get('status') or ''), float(event.get('latency_ms') or 0),
+                float(event.get('database_latency_ms') or 0), int(event.get('row_count') or 0),
+                int(bool(event.get('truncated'))), str(event.get('cache_status') or ''),
+                json.dumps(event.get('tables_accessed') or [], default=str), str(event.get('query_hash') or ''),
+                str(event.get('error_code') or ''), json.dumps(event.get('sanitized_parameters') or {}, default=str),
+                json.dumps(event, default=str),
+            )],
+        )
+        return True
+    except Exception as exc:
+        log.warning('MCP audit persistence skipped: %s', exc)
         return False

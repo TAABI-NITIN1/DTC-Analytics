@@ -1,0 +1,20 @@
+{
+  "ai_chat_response_fields": ["text", "chart", "intent", "customer_name", "mode", "tools_called", "tool_results", "metrics", "token_usage", "nodes_executed", "failure_reasons", "trace_log", "sql_events", "sql_planner_events", "evaluation", "request_id", "version"],
+  "graphql_operations": {
+    "fleetKpis": ["totalVehicles", "vehiclesWithDtcs", "criticalVehicles", "avgResolutionDays", "fleetHealthScore", "maintenanceDue", "totalDtcAlerts", "criticalAlerts"],
+    "topDtcCodes": ["dtcCode", "description", "occurrences", "vehiclesAffected"],
+    "fleetFaultTrends": ["eventDate", "activeFaults", "newFaults", "resolvedFaults", "driverRelatedFaults", "fleetHealthScore"],
+    "vehicleHealthDetail": ["uniqueid", "vehicleNumber", "customerName", "vehicleHealthScore", "activeFaultCount", "criticalFaultCount"],
+    "vehicleFaults": ["dtcCode", "episodeCount", "activeEpisodes", "maxSeverity", "daysPersistence"],
+    "dtcFleetImpact": ["dtcCode", "system", "subsystem", "vehiclesAffected", "activeVehicles", "avgResolutionTime", "driverRelatedRatio", "fleetRiskScore"],
+    "dtcCooccurrence": ["dtcCodeA", "dtcCodeB", "cooccurrenceCount", "vehiclesAffected", "avgTimeGapSec"],
+    "enhancedMaintenance": ["uniqueid", "vehicleNumber", "dtcCode", "description", "severityLevel", "maintenancePriorityScore", "recommendedAction"]
+  },
+  "parity_tolerances": {
+    "integer_string_boolean_fields": "exact",
+    "floating_point_absolute_tolerance": 0.1,
+    "date_time": "same instant after ISO-8601 normalization",
+    "ordered_lists": "same deterministic business ordering",
+    "empty_results": "empty list or nullable object matching the existing GraphQL type"
+  }
+}
