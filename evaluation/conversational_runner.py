@@ -533,7 +533,7 @@ def check_api_health(api_base_url: str) -> None:
     raise RuntimeError(
         f'Backend not reachable at {api_base_url} after {retries} attempts '
         f'(health timeout {timeout_sec}s each). '
-        f'Start it with: python -m uvicorn src.api_server:app --host 127.0.0.1 --port 8005'
+        f'Start it with: python -m uvicorn src.api_server:app --host 127.0.0.1 --port 8001'
     ) from last_exc
 
 
@@ -985,7 +985,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument('--baseline-dir', default=os.getenv('EVAL_BASELINE_DIR', ''))
     parser.add_argument('--dry-run', action='store_true', default=truthy(os.getenv('EVAL_DRY_RUN'), False))
     parser.add_argument('--write-excel', action='store_true', default=truthy(os.getenv('EVAL_WRITE_EXCEL'), False))
-    parser.add_argument('--api-base-url', default=os.getenv('EVAL_API_BASE_URL', 'http://127.0.0.1:8005'))
+    parser.add_argument('--api-base-url', default=os.getenv('EVAL_API_BASE_URL', 'http://127.0.0.1:8001'))
     parser.add_argument('--run-id', default=os.getenv('EVAL_RUN_ID', ''))
     parser.add_argument('--store-full-answer', action='store_true', default=truthy(os.getenv('EVAL_STORE_FULL_ANSWER'), False))
     parser.add_argument('--skip-unified-excel', action='store_true', help='Skip unified Excel export (orchestrator writes combined workbook).')

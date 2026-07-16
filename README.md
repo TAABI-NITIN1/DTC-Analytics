@@ -185,7 +185,7 @@ $env:EVAL_CUSTOMER_NAME="VRL LOGISTICS LIMITED"
 $env:LANGSMITH_TRACING="true"
 
 python evaluation/run_data_collection.py `
-  --api-base-url http://127.0.0.1:8005 `
+  --api-base-url http://127.0.0.1:8001 `
   --single-turn-limit 60 `
   --write-excel `
   --store-full-answer
@@ -206,7 +206,7 @@ Excel sheets: `Summary`, `SingleTurn`, `MultiTurn`, `Aggregates`.
 
 ```powershell
 python evaluation/run_data_collection.py `
-  --api-base-url http://127.0.0.1:8005 `
+  --api-base-url http://127.0.0.1:8001 `
   --questions-file evaluation/questions_1000.json `
   --single-turn-limit 1000 `
   --resume `
@@ -218,7 +218,7 @@ Or run single-turn bulk only:
 
 ```powershell
 python evaluation/bulk_eval_runner.py `
-  --api-base-url http://127.0.0.1:8005 `
+  --api-base-url http://127.0.0.1:8001 `
   --questions-file evaluation/questions_1000.json `
   --limit 1000 `
   --resume `
@@ -277,7 +277,7 @@ $env:EVAL_CUSTOMER_NAME="VRL LOGISTICS LIMITED"
 $env:LANGSMITH_TRACING="true"
 
 python evaluation/run_1000_collection.py `
-  --api-base-url http://127.0.0.1:8005 `
+  --api-base-url http://127.0.0.1:8001 `
   --limit-sessions 50 `
   --write-excel `
   --store-full-answer
@@ -287,7 +287,7 @@ python evaluation/run_1000_collection.py `
 
 ```powershell
 python evaluation/run_1000_collection.py `
-  --api-base-url http://127.0.0.1:8005 `
+  --api-base-url http://127.0.0.1:8001 `
   --sessions-file evaluation/conversational_scenarios/sessions_1000.json `
   --write-excel `
   --store-full-answer `
@@ -303,12 +303,12 @@ Each chunk processes up to `--limit-sessions` **sessions that are not yet in** `
 ```powershell
 # Hosted backend (your VM):
 .\evaluation\run_phase2_chunks.ps1 `
-  -ApiBaseUrl http://4.224.101.147:8005 `
+  -ApiBaseUrl http://4.224.101.147:8001 `
   -RunId eval_20260520_085108_190cf6 `
   -ChunkSize 75
 ```
 
-Local default (`-ApiBaseUrl` omitted): `http://127.0.0.1:8005`.
+Local default (`-ApiBaseUrl` omitted): `http://127.0.0.1:8001`.
 
 Equivalent manual loop:
 

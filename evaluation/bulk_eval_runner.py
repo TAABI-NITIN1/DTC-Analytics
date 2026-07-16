@@ -262,7 +262,7 @@ def run_bulk_eval(args: argparse.Namespace) -> dict[str, Any]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Bulk single-turn evaluation via backend API.')
-    parser.add_argument('--api-base-url', default=os.getenv('EVAL_API_BASE_URL', 'http://127.0.0.1:8005'))
+    parser.add_argument('--api-base-url', default=os.getenv('EVAL_API_BASE_URL', 'http://127.0.0.1:8001'))
     parser.add_argument('--output-dir', default=os.getenv('EVAL_OUTPUT_DIR', str(DEFAULT_OUTPUT_DIR)))
     parser.add_argument('--run-id', default=os.getenv('EVAL_RUN_ID', ''))
     parser.add_argument('--limit', type=int, default=int(os.getenv('EVAL_LIMIT', '0') or '0'))

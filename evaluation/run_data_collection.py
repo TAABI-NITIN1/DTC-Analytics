@@ -26,7 +26,7 @@ from evaluation.local_store import DEFAULT_OUTPUT_DIR, LocalEvaluationStore, utc
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Unified evaluation data collection (single-turn + multi-turn).')
-    parser.add_argument('--api-base-url', default=os.getenv('EVAL_API_BASE_URL', 'http://127.0.0.1:8005'))
+    parser.add_argument('--api-base-url', default=os.getenv('EVAL_API_BASE_URL', 'http://127.0.0.1:8001'))
     parser.add_argument('--output-dir', default=os.getenv('EVAL_OUTPUT_DIR', str(DEFAULT_OUTPUT_DIR)))
     parser.add_argument('--run-id', default=os.getenv('EVAL_RUN_ID', ''))
     parser.add_argument('--single-turn-limit', type=int, default=int(os.getenv('EVAL_SINGLE_TURN_LIMIT', '0') or '0'))

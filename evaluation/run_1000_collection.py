@@ -70,7 +70,7 @@ def ensure_catalog(args: argparse.Namespace) -> Path:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Phase 2: 1000-session evaluation collection.')
-    parser.add_argument('--api-base-url', default=os.getenv('EVAL_API_BASE_URL', 'http://127.0.0.1:8005'))
+    parser.add_argument('--api-base-url', default=os.getenv('EVAL_API_BASE_URL', 'http://127.0.0.1:8001'))
     parser.add_argument('--output-dir', default=os.getenv('EVAL_OUTPUT_DIR', str(DEFAULT_OUTPUT_DIR)))
     parser.add_argument('--run-id', default=os.getenv('EVAL_RUN_ID', ''))
     parser.add_argument('--sessions-file', default=os.getenv('EVAL_SESSIONS_FILE', str(DEFAULT_SESSIONS_FILE)))

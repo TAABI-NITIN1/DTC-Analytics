@@ -1,27 +1,16 @@
 services:
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.12.1
-    container_name: mlflow
-    command: mlflow server --host 0.0.0.0 --port 5000
-    volumes:
-      - mlflow_data:/mlflow
-    environment:
-      MLFLOW_DEFAULT_ARTIFACT_ROOT: /mlflow/artifacts
-    restart: unless-stopped
-
-  analytics-api:
+  dtc-analytics:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: agentic-backend
+      dockerfile: Dockerfile.dtc-analytics
+    container_name: dtc-analytics
     working_dir: /app
     env_file:
       - .env
-    command: ["python", "-m", "uvicorn", "src.api_server:app", "--host", "0.0.0.0", "--port", "8005", "--reload"]
     ports:
-      - "8005:8005"
+      - "8001:8001"
+      - "5174:5174"
     environment:
-      MLFLOW_TRACKING_URI: "http://mlflow:5000"
       PYTHONPATH: /app
       DTC_MCP_URL: "http://dtc-mcp:8001/mcp"
       REDIS_URL: "redis://dtc-redis:6379/0"
@@ -30,8 +19,7 @@ services:
       - /app/__pycache__
       - /app/.venv
       - /app/.git
-    depends_on:
-      - mlflow
+      - frontend_node_modules:/app/frontend/node_modules
     networks:
       - default
       - dtc-internal
@@ -115,24 +103,7 @@ services:
       - /app/.git
     restart: unless-stopped
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: dtc-frontend
-    command: ["node", "node_modules/vite/bin/vite.js", "--host", "0.0.0.0", "--port", "5173"]
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-      - /app/.git
-    depends_on:
-      - analytics-api
-    restart: unless-stopped
-
 volumes:
-  mlflow_data:
   frontend_node_modules:
 
 networks:

@@ -449,6 +449,7 @@ Env: ANTHROPIC_API_KEY must be set.
 import concurrent.futures
 import json
 import logging
+import math
 import os
 import hashlib
 import re
@@ -1203,7 +1204,51 @@ _TOOL_SPEC_BY_NAME = {
     if isinstance(t, dict) and isinstance(t.get('function'), dict) and t['function'].get('name')
 }
 
-QUERY_CACHE: dict[str, str] = {}
+class _SqlQueryCache:
+    """Caches generated SQL per (tool, query, args, context) key.
+
+    Uses Redis (REDIS_URL) when available so the cache survives backend
+    reloads/restarts and is shared across workers; falls back to an
+    in-process dict when Redis isn't configured or unreachable.
+    """
+
+    _PREFIX = 'ai_analyst:sql_cache:'
+
+    def __init__(self, *, ttl_seconds: int):
+        self._ttl_seconds = ttl_seconds
+        self._memory: dict[str, str] = {}
+        self._client = None
+        redis_url = (os.getenv('REDIS_URL') or '').strip()
+        if redis_url:
+            try:
+                from redis import Redis
+                client = Redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=0.2, socket_timeout=0.2)
+                client.ping()
+                self._client = client
+            except Exception:
+                self._client = None
+
+    def get(self, cache_key: str) -> str | None:
+        redis_key = self._PREFIX + hashlib.sha256(cache_key.encode('utf-8')).hexdigest()
+        if self._client is not None:
+            try:
+                return self._client.get(redis_key)
+            except Exception:
+                pass
+        return self._memory.get(cache_key)
+
+    def set(self, cache_key: str, query: str) -> None:
+        redis_key = self._PREFIX + hashlib.sha256(cache_key.encode('utf-8')).hexdigest()
+        if self._client is not None:
+            try:
+                self._client.setex(redis_key, self._ttl_seconds, query)
+                return
+            except Exception:
+                pass
+        self._memory[cache_key] = query
+
+
+QUERY_CACHE = _SqlQueryCache(ttl_seconds=int(os.getenv('AI_ANALYST_SQL_CACHE_TTL_SECONDS', '21600')))
 
 
 def _schema_columns(meta: dict) -> list[str]:
@@ -1612,7 +1657,7 @@ def _execute_structured_tool_with_llm_sql(*, tool_name: str, tool_args: dict, us
             continue
 
         if isinstance(result, dict):
-            QUERY_CACHE[cache_key] = query
+            QUERY_CACHE.set(cache_key, query)
             result['generated_query'] = query
             result['generated_by'] = 'llm_sql_planner'
             result['tool'] = tool_name
@@ -1718,6 +1763,17 @@ def _exec_sql(query: str, params: dict | None = None) -> list[dict]:
     return rows
 
 
+def _sanitize_nan(value):
+    """Recursively replace NaN/Infinity floats with None (JSON doesn't allow them)."""
+    if isinstance(value, float):
+        return None if (math.isnan(value) or math.isinf(value)) else value
+    if isinstance(value, dict):
+        return {k: _sanitize_nan(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_nan(v) for v in value]
+    return value
+
+
 def _safe_exec(query: str, params: dict | None = None) -> dict:
     req_id = str(uuid.uuid4())
     started = time.time()
@@ -1730,7 +1786,7 @@ def _safe_exec(query: str, params: dict | None = None) -> dict:
 
     try:
         log.info(f"[{req_id}] [SQL QUERY]\n{rendered_query}")
-        rows = _exec_sql(query, params=params)
+        rows = _sanitize_nan(_exec_sql(query, params=params))
         result = {"data": rows, "count": len(rows)}
         if isinstance(sql_events, list):
             sql_events.append({
@@ -1793,7 +1849,7 @@ def _tool_get_fleet_health(args: dict) -> dict:
     days = _safe_int(args.get('days', 30), default=30, min_value=1, max_value=365)
     params = {'customer_name': customer, 'days': days} if customer else {'days': days}
 
-    vhs_where = ' WHERE customer_name = %(customer_name)s' if customer else ''
+    vhs_where = ' WHERE lower(trim(customer_name)) = lower(trim(%(customer_name)s))' if customer else ''
     vhs = _safe_exec(
         f"""
         SELECT
@@ -1808,7 +1864,7 @@ def _tool_get_fleet_health(args: dict) -> dict:
         params=params if customer else None,
     )
 
-    live_where = ' WHERE customer_name = %(customer_name)s' if customer else ''
+    live_where = ' WHERE lower(trim(customer_name)) = lower(trim(%(customer_name)s))' if customer else ''
     live = _safe_exec(
         f"""
         SELECT
@@ -1848,7 +1904,7 @@ def _tool_get_fleet_health(args: dict) -> dict:
                 countIf(is_resolved = 1) AS resolved_faults,
                 countIf(driver_related = 1) AS driver_related_faults
             FROM vehicle_fault_master_ravi_v2
-            WHERE customer_name = %(customer_name)s
+            WHERE lower(trim(customer_name)) = lower(trim(%(customer_name)s))
               AND event_date >= today() - %(days)s
             GROUP BY event_date
             ORDER BY event_date DESC
@@ -1897,7 +1953,7 @@ def _tool_get_fleet_dtc_distribution(args: dict) -> dict:
                          / countIf(f.resolution_time_sec > 0), 1), 0) as avg_resolution_time,
                 countIf(f.driver_related = 1) as driver_related_count
             FROM vehicle_fault_master_ravi_v2 f
-            WHERE f.customer_name = %(customer_name)s
+            WHERE lower(trim(f.customer_name)) = lower(trim(%(customer_name)s))
               AND f.event_date >= today() - %(days)s
             GROUP BY f.dtc_code
             ORDER BY total_occurrences DESC
@@ -1928,7 +1984,7 @@ def _tool_get_fleet_trends(args: dict) -> dict:
                 countIf(is_resolved = 1) as resolved_faults,
                 countIf(driver_related = 1) as driver_related_faults
             FROM vehicle_fault_master_ravi_v2
-            WHERE customer_name = %(customer_name)s
+            WHERE lower(trim(customer_name)) = lower(trim(%(customer_name)s))
               AND event_date >= today() - %(days)s
             GROUP BY event_date
             ORDER BY event_date ASC
@@ -2047,7 +2103,7 @@ def _tool_get_dtc_cooccurrence(args: dict) -> dict:
             WITH target_vehicles AS (
                 SELECT DISTINCT uniqueid
                 FROM vehicle_fault_master_ravi_v2
-                WHERE dtc_code = %(dtc_code)s AND customer_name = %(customer_name)s
+                WHERE dtc_code = %(dtc_code)s AND lower(trim(customer_name)) = lower(trim(%(customer_name)s))
             )
             SELECT
                 f.dtc_code as cooccurring_dtc,
@@ -2056,7 +2112,7 @@ def _tool_get_dtc_cooccurrence(args: dict) -> dict:
             FROM vehicle_fault_master_ravi_v2 f
             INNER JOIN target_vehicles tv ON f.uniqueid = tv.uniqueid
             WHERE f.dtc_code != %(dtc_code)s
-              AND f.customer_name = %(customer_name)s
+              AND lower(trim(f.customer_name)) = lower(trim(%(customer_name)s))
             GROUP BY f.dtc_code
             ORDER BY vehicles_affected DESC
             LIMIT 15
@@ -2091,7 +2147,7 @@ def _tool_get_maintenance_priority(args: dict) -> dict:
         WHERE 1=1
     """
     if customer:
-        query += '\n        AND v.customer_name = %(customer_name)s\n'
+        query += '\n        AND lower(trim(v.customer_name)) = lower(trim(%(customer_name)s))\n'
     query += """
         ORDER BY m.maintenance_priority_score DESC
         LIMIT %(limit)s
@@ -2113,7 +2169,7 @@ def _tool_get_fleet_system_health(args: dict) -> dict:
                             f.severity_level=3,7.0, 12.0),
                     f.is_resolved = 0), 1) as risk_score
             FROM vehicle_fault_master_ravi_v2 f
-            WHERE f.system != '' AND f.customer_name = %(customer_name)s
+            WHERE f.system != '' AND lower(trim(f.customer_name)) = lower(trim(%(customer_name)s))
             GROUP BY f.system
             ORDER BY risk_score DESC
         """, params={'customer_name': customer})
@@ -2147,7 +2203,7 @@ def _tool_get_dtc_fleet_impact(args: dict) -> dict:
                             f.severity_level=3,7.0, 12.0),
                     f.is_resolved = 0), 1) as fleet_risk_score
             FROM vehicle_fault_master_ravi_v2 f
-            WHERE f.customer_name = %(customer_name)s
+            WHERE lower(trim(f.customer_name)) = lower(trim(%(customer_name)s))
             GROUP BY f.dtc_code
             ORDER BY fleet_risk_score DESC
             LIMIT %(limit)s

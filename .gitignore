@@ -49,3 +49,15 @@ Thumbs.db
 # Task files
 # tasks.json
 # tasks/
+
+# Large binary files
+*.pptx
+*.docx
+
+# Build artifacts
+eval-dashboard/dist/
+eval-dashboard/public/runs/
+
+# Temporary Docker files
+Dockerfile.dtc-analytics
+docker/

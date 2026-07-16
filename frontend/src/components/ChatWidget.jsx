@@ -14,10 +14,10 @@ import {
 const COLORS = ['#1e40af', '#3b82f6', '#16a34a', '#d97706', '#dc2626', '#8b5cf6', '#0284c7', '#ea580c'];
 
 // Use an explicit backend base URL instead of relying on Vite proxy.
-// Prefer VITE_API_URL when provided; otherwise default to the same host (port 8005).
+// Prefer VITE_API_URL when provided; otherwise default to the same host (port 8001).
 const DEFAULT_API_BASE = (typeof window !== 'undefined')
-  ? `http://${window.location.hostname}:8005`
-  : 'http://127.0.0.1:8005';
+  ? `http://${window.location.hostname}:8001`
+  : 'http://127.0.0.1:8001';
 const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
 
 /* ── Lightweight Markdown Renderer ──────────────────────────────── */
@@ -230,6 +230,8 @@ export default function ChatWidget({ pageContext, demoMode }) {
   const [conversationId, setConversationId] = useState('');
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const panelRef = useRef(null);
+  const resizeStateRef = useRef(null);
   const previousCustomerScopeRef = useRef(((pageContext?.customer_name) || '').trim().toLowerCase());
 
   const mode = pageContext?.mode || 'default';
@@ -314,6 +316,41 @@ export default function ChatWidget({ pageContext, demoMode }) {
     }
   };
 
+  const stopResizeTL = () => {
+    resizeStateRef.current = null;
+    window.removeEventListener('mousemove', handleResizeMoveTL);
+    window.removeEventListener('mouseup', stopResizeTL);
+  };
+
+  const handleResizeMoveTL = (e) => {
+    const state = resizeStateRef.current;
+    const panel = panelRef.current;
+    if (!state || !panel) return;
+    const dx = state.startX - e.clientX;
+    const dy = state.startY - e.clientY;
+    const maxWidth = window.innerWidth * 0.96;
+    const maxHeight = window.innerHeight * 0.92;
+    const newWidth = Math.min(Math.max(state.startWidth + dx, 320), maxWidth);
+    const newHeight = Math.min(Math.max(state.startHeight + dy, 360), maxHeight);
+    panel.style.width = `${newWidth}px`;
+    panel.style.height = `${newHeight}px`;
+  };
+
+  const startResizeTL = (e) => {
+    e.preventDefault();
+    const panel = panelRef.current;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    resizeStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: rect.width,
+      startHeight: rect.height,
+    };
+    window.addEventListener('mousemove', handleResizeMoveTL);
+    window.addEventListener('mouseup', stopResizeTL);
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -344,7 +381,12 @@ export default function ChatWidget({ pageContext, demoMode }) {
 
       {/* Chat Panel */}
       {open && (
-        <div className="chat-panel">
+        <div className="chat-panel" ref={panelRef}>
+          <div
+            className="chat-resize-handle chat-resize-handle-tl"
+            onMouseDown={startResizeTL}
+            title="Drag to resize"
+          />
           <div className="chat-header">
             <div className="chat-header-left">
               <span className="chat-header-icon">✦</span>

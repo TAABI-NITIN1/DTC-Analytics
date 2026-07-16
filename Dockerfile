@@ -14,6 +14,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . .
 
-EXPOSE 8005
+EXPOSE 8001
 
-CMD ["uvicorn", "src.api_server:app", "--host", "0.0.0.0", "--port", "8005"]
+CMD ["uvicorn", "src.api_server:app", "--host", "0.0.0.0", "--port", "8001"]

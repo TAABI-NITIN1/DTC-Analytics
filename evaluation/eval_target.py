@@ -18,7 +18,7 @@ LOCAL_HOSTS = {
 
 def resolve_eval_target(api_base_url: str) -> dict[str, Any]:
     explicit = (os.getenv('EVAL_ENVIRONMENT') or os.getenv('DEPLOYMENT_ENV') or '').strip().lower()
-    url = (api_base_url or os.getenv('EVAL_API_BASE_URL') or 'http://127.0.0.1:8005').strip().rstrip('/')
+    url = (api_base_url or os.getenv('EVAL_API_BASE_URL') or 'http://127.0.0.1:8001').strip().rstrip('/')
     parsed = urlparse(url if '://' in url else f'http://{url}')
     host = (parsed.hostname or '').lower()
 

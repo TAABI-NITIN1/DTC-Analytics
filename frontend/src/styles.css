@@ -791,6 +791,10 @@ tbody tr:hover {
   right: 24px;
   width: 400px;
   height: 520px;
+  min-width: 320px;
+  min-height: 360px;
+  max-width: 96vw;
+  max-height: 92vh;
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.15);
@@ -798,7 +802,34 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  resize: both;
   animation: chatSlideUp 0.25s ease-out;
+}
+
+.chat-resize-handle-tl {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  z-index: 10;
+}
+
+.chat-resize-handle-tl::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid rgba(255, 255, 255, 0.75);
+  border-left: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 2px 0 0 0;
+}
+
+.chat-resize-handle-tl:hover::before {
+  border-color: #fff;
 }
 
 @keyframes chatSlideUp {
